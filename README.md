@@ -1,44 +1,44 @@
 # devcontainer.nvim
 
-Neovim プラグイン: Dev Container 内で言語サーバを透過的に実行し、Neovim はホスト上で動作し続けることを目的とします。
+A Neovim plugin that runs Language Servers inside a Dev Container while Neovim continues to run on the host.
 
-概要
-- 言語サーバ起動コマンドを `devcontainer exec` でラップし、stdin/stdout を保持して LSP 通信を壊さないことを目標にします。
+Overview
+- The plugin wraps language server start commands with `devcontainer exec`, preserving stdin/stdout so LSP communication remains unchanged.
 
-クイックスタート（想定）
-1. `devcontainer` CLI をインストールする。
-2. プラグインをインストール（例: packer 等で `devcontainer.nvim` を追加）。
-3. Neovim 設定で有効化:
+Quickstart (assumed)
+1. Install the `devcontainer` CLI.
+2. Install the plugin using your plugin manager.
+3. Enable the plugin in your Neovim config:
 
 ```lua
-require("devcontainer").setup()
-require("devcontainer").wrap_lsp("gopls")
+require('devcontainer').setup()
+require('devcontainer').wrap_lsp('gopls')
 ```
 
-手動検証（最小手順）
-- プロジェクトに `.devcontainer/devcontainer.json` を置く。
-- コンテナを起動: `devcontainer up --workspace-folder .`
-- Neovim を開き、LSP（例: gopls）が `devcontainer exec` 経由で起動し、補完や診断が動作することを確認。
+Manual verification (minimal)
+- Add a `.devcontainer/devcontainer.json` to a project.
+- Start the container: `devcontainer up --workspace-folder .`
+- Open Neovim in the project and verify the LSP (e.g. gopls) starts via `devcontainer exec` and that completion/diagnostics work.
 
-開発とテスト
-- コードは `lua/devcontainer/` 以下を想定します（init.lua, detection.lua, cli.lua, lsp.lua）。
-- 単体テスト: busted または plenary.nvim を推奨。
-  - busted で単一テスト実行例: `busted spec/command_spec.lua --pattern "wrap_cmd"`
-  - plenary の単一テストはプロジェクトのテストランナーに従ってください。
-- 統合テストは最小 Dev Container を使った手動検証を推奨します。
+Development and testing
+- Implementation lives under `lua/devcontainer/` (init.lua, detection.lua, cli.lua, lsp.lua).
+- Unit tests: use busted or plenary.nvim.
+  - Example single busted test: `busted spec/command_spec.lua --pattern "wrap_cmd"`
+- Integration testing: manual verification with a minimal Dev Container that includes the language server binary.
 
-設定例
+Configuration example
 ```lua
-require("devcontainer").setup({
+require('devcontainer').setup({
   auto_start = true,
-  log_level = "error",
+  log_level = 'error',
 })
 ```
 
-仕様とエージェント向けガイダンス
-- 実装方針や要件は `SPECIFICATION.md` を参照してください。
-- 自動化エージェント向けの指示は `AGENTS.md` にあります。
+Specification and agent guidance
+- Implementation requirements and design are in `SPECIFICATION.md`.
+- Agent guidance for automation is in `AGENTS.md`.
 
-貢献
-- まず ISSUE で相談してください。重要な変更はテストとドキュメントを添えて PR を作成してください。
+Contributing
+- Open an issue to discuss major changes. Include tests and documentation with pull requests.
 
+(Generated: 2026-09-27)
