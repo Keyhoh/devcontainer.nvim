@@ -1,0 +1,23 @@
+name: Lua tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Lua
+        uses: lua-actions/setup-lua@v1
+        with:
+          lua-version: '5.4'
+      - name: Install luarocks
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luarocks
+      - name: Install busted
+        run: |
+          luarocks install busted
+      - name: Run tests
+        run: |
+          busted -v
