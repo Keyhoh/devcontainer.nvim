@@ -2,9 +2,36 @@ local M = {}
 
 local cli = require("devcontainer.cli")
 local lsp = require("devcontainer.lsp")
+local detection = require("devcontainer.detection")
+
+local function load_devcontainer_init()
+  local init_file = detection.find_init_file()
+  
+  if not init_file then
+    return
+  end
+  
+  if init_file:match("%.lua$") then
+    local ok, err = pcall(function()
+      dofile(init_file)
+    end)
+    if not ok then
+      vim.notify("[devcontainer] Error loading init.lua: " .. tostring(err), vim.log.levels.ERROR)
+    end
+  elseif init_file:match("%.vim$") then
+    local ok, err = pcall(function()
+      vim.cmd("source " .. init_file)
+    end)
+    if not ok then
+      vim.notify("[devcontainer] Error loading init.vim: " .. tostring(err), vim.log.levels.ERROR)
+    end
+  end
+end
 
 function M.setup(opts)
   cli.setup(opts or {})
+  
+  load_devcontainer_init()
 
   vim.api.nvim_create_user_command("DevcontainerUp", function()
     local success = cli.up()

@@ -25,6 +25,7 @@ preserving stdin/stdout so LSP communication remains transparent to Neovim.
 Key features:
 - Transparent LSP command wrapping with `devcontainer exec`
 - Interactive terminal support for running commands in the container
+- Automatic loading of `.devcontainer/init.lua` or `.devcontainer/init.vim`
 - Minimal configuration required
 - No modification of LSP protocol messages
 
@@ -74,6 +75,32 @@ log_level~
   - 'error': Only log errors
   - 'info': Log errors and info messages
   - 'debug': Log all messages including debug output
+
+Dev Container Init Files~
+
+The plugin automatically loads initialization files from the Dev Container
+directory. This allows you to define Dev Container-specific Neovim configuration.
+
+When setup() is called, the plugin searches for:
+  1. `.devcontainer/init.lua` (Lua configuration)
+  2. `.devcontainer/init.vim` (Vim configuration)
+
+If found, the file is automatically loaded. If both exist, `.lua` takes precedence.
+
+Example `.devcontainer/init.lua`:
+>
+  -- Dev Container-specific configuration
+  vim.opt.undodir = '/tmp/.nvim-undo'
+  
+  -- Configure container-specific LSP servers
+  require('devcontainer').setup({ log_level = 'debug' })
+<
+
+Example `.devcontainer/init.vim`:
+>
+  " Dev Container-specific configuration
+  set undodir=/tmp/.nvim-undo
+<
 
 ==============================================================================
 COMMANDS                                            *devcontainer-commands*
@@ -247,6 +274,26 @@ Module: devcontainer.cli                              *devcontainer-cli*
       local wrapped = require('devcontainer.cli').exec({'gopls'})
       -- Result: {'devcontainer', 'exec', '--workspace-folder', '/path/to/workspace', 'gopls'}
     <
+
+Module: devcontainer.detection                    *devcontainer-detection*
+  Internal module for Dev Container detection.
+
+  devcontainer.detection.has_devcontainer([{workspace}]) *devcontainer.detection.has_devcontainer()*
+    Check if a Dev Container configuration exists in the workspace.
+    Parameters:
+    - {workspace} (string, optional): Workspace path (defaults to current directory)
+    Returns: (bool, string) - true and path if found, false and nil otherwise
+
+  devcontainer.detection.find_init_file([{workspace}]) *devcontainer.detection.find_init_file()*
+    Find `.devcontainer/init.lua` or `.devcontainer/init.vim` in the workspace.
+    
+    Searches for init files in this order:
+    1. `.devcontainer/init.lua` (takes precedence)
+    2. `.devcontainer/init.vim`
+    
+    Parameters:
+    - {workspace} (string, optional): Workspace path (defaults to current directory)
+    Returns: (string) - Path to init file if found, nil otherwise
 
 ==============================================================================
 TROUBLESHOOTING                                  *devcontainer-troubleshooting*

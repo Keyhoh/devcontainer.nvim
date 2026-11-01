@@ -44,4 +44,20 @@ function M.has_devcontainer(workspace)
   return false, nil
 end
 
+function M.find_init_file(workspace)
+  workspace = workspace or M.find_workspace_root()
+  
+  local init_lua = workspace .. "/.devcontainer/init.lua"
+  if file_exists(init_lua) then
+    return init_lua
+  end
+  
+  local init_vim = workspace .. "/.devcontainer/init.vim"
+  if file_exists(init_vim) then
+    return init_vim
+  end
+  
+  return nil
+end
+
 return M
