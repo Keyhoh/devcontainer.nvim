@@ -26,6 +26,10 @@ function M.setup(opts)
   }, opts or {})
 end
 
+function M.get_config()
+  return config
+end
+
 function M.up()
   if not ensure_devcontainer_available() then
     return false

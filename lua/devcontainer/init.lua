@@ -1,6 +1,7 @@
 local M = {}
 
 local cli = require("devcontainer.cli")
+local lsp = require("devcontainer.lsp")
 
 function M.setup(opts)
   cli.setup(opts or {})
@@ -29,6 +30,25 @@ function M.setup(opts)
     desc = "Execute command in Dev Container (interactive terminal)",
     nargs = "+",
   })
+end
+
+-- Direct export of LSP wrapping function
+M.wrap_lsp_cmd = lsp.wrap_lsp_cmd
+
+function M.wrap_for_lsp(config, workspace)
+  workspace = workspace or vim.fn.getcwd()
+  
+  if not config or not config.cmd then
+    return config
+  end
+  
+  local wrapped_cmd = M.wrap_lsp_cmd(config.cmd, workspace)
+  if wrapped_cmd then
+    local new_config = vim.tbl_extend("force", config, { cmd = wrapped_cmd })
+    return new_config
+  end
+  
+  return config
 end
 
 return M

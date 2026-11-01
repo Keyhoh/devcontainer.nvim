@@ -116,7 +116,6 @@ textDocument/publishDiagnostics
 これは極めて重要である。
 
 Neovim は LSP プロセスが stdin/stdout を通じて通信することを期待している。
-
 結果として得られるプロセスチェーンは、Neovim が直接言語サーバを起動したかのように振る舞う必要がある：
 
 ```text
