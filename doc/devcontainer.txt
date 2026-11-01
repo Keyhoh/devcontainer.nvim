@@ -1,0 +1,155 @@
+*devcontainer.txt*  Run language servers inside Dev Container
+
+Author:  Keyhoh
+License: MIT
+
+==============================================================================
+CONTENTS                                              *devcontainer-contents*
+
+  1. Introduction .......................... |devcontainer-introduction|
+  2. Installation .......................... |devcontainer-installation|
+  3. Configuration ......................... |devcontainer-configuration|
+  4. Commands .............................. |devcontainer-commands|
+  5. API ................................... |devcontainer-api|
+
+==============================================================================
+INTRODUCTION                                      *devcontainer-introduction*
+
+devcontainer.nvim is a Neovim plugin that enables running language servers
+inside a Dev Container while Neovim continues to run on the host machine.
+
+The plugin wraps language server startup commands with `devcontainer exec`,
+preserving stdin/stdout so LSP communication remains transparent to Neovim.
+
+Key features:
+- Transparent LSP command wrapping with `devcontainer exec`
+- Interactive terminal support for running commands in the container
+- Minimal configuration required
+- No modification of LSP protocol messages
+
+Requirements:
+- Neovim >= 0.8
+- Dev Container CLI installed (https://github.com/devcontainers/cli)
+
+==============================================================================
+INSTALLATION                                      *devcontainer-installation*
+
+Using a plugin manager (e.g., lazy.nvim):
+
+>
+  {
+    "keyhoh/devcontainer.nvim",
+    config = function()
+      require("devcontainer").setup()
+    end,
+  }
+<
+
+Using vim-plug:
+
+>
+  Plug 'keyhoh/devcontainer.nvim'
+<
+
+Then in your init.lua:
+
+>
+  require('devcontainer').setup()
+<
+
+==============================================================================
+CONFIGURATION                                    *devcontainer-configuration*
+
+The plugin is configured via the setup() function:
+
+>
+  require('devcontainer').setup({
+    auto_start = true,  -- Automatically start Dev Container (default: true)
+    log_level = 'error' -- Log level: 'error', 'info', or 'debug' (default: 'error')
+  })
+<
+
+log_level~
+  - 'error': Only log errors
+  - 'info': Log errors and info messages
+  - 'debug': Log all messages including debug output
+
+==============================================================================
+COMMANDS                                            *devcontainer-commands*
+
+:DevcontainerUp                                       *:DevcontainerUp*
+  Start the Dev Container for the current workspace (current directory).
+  Displays a notification on success or failure.
+
+  Example:
+  >
+    :DevcontainerUp
+  <
+
+:DevcontainerExec {cmd}                             *:DevcontainerExec*
+  Execute a command inside the Dev Container in an interactive terminal.
+  The command is wrapped with `devcontainer exec` and run in a terminal
+  buffer, allowing full interactivity (stdin/stdout).
+
+  This command supports any executable available in the Dev Container,
+  including interactive tools like bash, psql, node REPL, etc.
+
+  Examples:
+  >
+    :DevcontainerExec bash
+    :DevcontainerExec psql -h localhost -U postgres
+    :DevcontainerExec node
+    :DevcontainerExec npm run dev
+  <
+
+==============================================================================
+API                                                    *devcontainer-api*
+
+devcontainer.setup({opts})                       *devcontainer.setup()*
+  Initialize the plugin with optional configuration.
+  This function must be called before using the plugin.
+
+  Parameters:
+  - {opts} (table, optional): Configuration options
+    - auto_start (bool): Automatically start Dev Container (default: true)
+    - log_level (string): Logging level (default: 'error')
+
+Module: devcontainer.cli                              *devcontainer-cli*
+  Internal module providing low-level Dev Container CLI operations.
+
+  devcontainer.cli.up()                            *devcontainer.cli.up()*
+    Start the Dev Container for the current workspace.
+    Returns: true on success, false on failure.
+
+  devcontainer.cli.exec({cmd})                  *devcontainer.cli.exec()*
+    Wrap a command array with `devcontainer exec`.
+    Parameters:
+    - {cmd} (table): Array of command arguments
+    Returns: Array of wrapped command arguments or nil on failure.
+
+    Example:
+    >
+      local wrapped = require('devcontainer.cli').exec({'gopls'})
+      -- Result: {'devcontainer', 'exec', '--workspace-folder', '/path/to/workspace', 'gopls'}
+    <
+
+==============================================================================
+TROUBLESHOOTING                                  *devcontainer-troubleshooting*
+
+Dev Container CLI not found~
+  Ensure the Dev Container CLI is installed and accessible in your PATH.
+  Install it from: https://github.com/devcontainers/cli
+
+No .devcontainer configuration found~
+  Add a `.devcontainer/devcontainer.json` or `.devcontainer.json` file
+  to your project root. Refer to the Dev Container specification:
+  https://containers.dev/
+
+Debug logging~
+  Enable debug logging to see detailed information:
+  >
+    require('devcontainer').setup({ log_level = 'debug' })
+  <
+
+==============================================================================
+vim:tw=78:et:ft=help:norl:
