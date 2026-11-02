@@ -27,10 +27,6 @@ Examples:
 :Devcontainer exec psql -h localhost
 ```
 
-**Deprecated aliases** (still supported for backward compatibility):
-- `:DevcontainerUp` - Use `:Devcontainer up` instead.
-- `:DevcontainerExec` - Use `:Devcontainer exec` instead.
-
 LSP Integration
 The plugin automatically wraps LSP commands to run inside the Dev Container. When a Dev Container is detected, language servers are transparently executed via `devcontainer exec`.
 

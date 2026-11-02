@@ -130,18 +130,6 @@ COMMANDS                                            *devcontainer-commands*
     :Devcontainer exec npm run dev
   <
 
-Deprecated commands~
-
-The following commands are deprecated but still supported for backward compatibility:
-
-:DevcontainerUp                                       *:DevcontainerUp*
-  Deprecated. Use |:Devcontainer| up instead.
-  Start the Dev Container for the current workspace (current directory).
-
-:DevcontainerExec {cmd}                             *:DevcontainerExec*
-  Deprecated. Use |:Devcontainer| exec instead.
-  Execute a command inside the Dev Container in an interactive terminal.
-
 ==============================================================================
 LSP INTEGRATION                                        *devcontainer-lsp*
 
