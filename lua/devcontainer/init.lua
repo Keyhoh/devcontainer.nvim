@@ -1,7 +1,7 @@
 local M = {}
 
 local cli = require("devcontainer.cli")
-local lsp = require("devcontainer.lsp")
+local cmd_wrapper = require("devcontainer.cmd_wrapper")
 local detection = require("devcontainer.detection")
 
 local function load_devcontainer_init()
@@ -107,8 +107,9 @@ function M.setup(opts)
   })
 end
 
--- Direct export of LSP wrapping function
-M.wrap_lsp_cmd = lsp.wrap_lsp_cmd
+-- Command wrapping functions
+M.wrap_cmd = cmd_wrapper.wrap_cmd
+M.create_wrapper = cmd_wrapper.create_wrapper
 
 function M.wrap_for_lsp(config, workspace)
   workspace = workspace or vim.fn.getcwd()
@@ -117,7 +118,7 @@ function M.wrap_for_lsp(config, workspace)
     return config
   end
 
-  local wrapped_cmd = M.wrap_lsp_cmd(config.cmd, workspace)
+  local wrapped_cmd = M.wrap_cmd(config.cmd, workspace)
   if wrapped_cmd then
     local new_config = vim.tbl_extend("force", config, { cmd = wrapped_cmd })
     return new_config
@@ -125,5 +126,4 @@ function M.wrap_for_lsp(config, workspace)
 
   return config
 end
-
 return M

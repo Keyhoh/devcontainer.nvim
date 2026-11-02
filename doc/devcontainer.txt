@@ -1,4 +1,4 @@
-*devcontainer.txt*  Run language servers inside Dev Container
+*devcontainer.txt*  Run commands inside Dev Container
 
 Author:  Keyhoh
 License: MIT
@@ -10,24 +10,28 @@ CONTENTS                                              *devcontainer-contents*
   2. Installation .......................... |devcontainer-installation|
   3. Configuration ......................... |devcontainer-configuration|
   4. Commands .............................. |devcontainer-commands|
-  5. LSP Integration ....................... |devcontainer-lsp|
-  6. API ................................... |devcontainer-api|
+  5. Command Wrapping ...................... |devcontainer-wrapping|
+  6. LSP Integration ....................... |devcontainer-lsp|
+  7. API ................................... |devcontainer-api|
 
 ==============================================================================
 INTRODUCTION                                      *devcontainer-introduction*
 
-devcontainer.nvim is a Neovim plugin that enables running language servers
-inside a Dev Container while Neovim continues to run on the host machine.
+devcontainer.nvim is a Neovim plugin that enables running commands inside
+a Dev Container while Neovim continues to run on the host machine.
 
-The plugin wraps language server startup commands with `devcontainer exec`,
-preserving stdin/stdout so LSP communication remains transparent to Neovim.
+The plugin wraps command startup commands with `devcontainer exec`,
+preserving stdin/stdout so communication remains transparent to Neovim.
+This is particularly useful for language servers and other long-running
+processes.
 
 Key features:
-- Transparent LSP command wrapping with `devcontainer exec`
+- Transparent command wrapping with `devcontainer exec`
+- Works with any command (LSP servers, build tools, debuggers, etc.)
 - Interactive terminal support for running commands in the container
 - Automatic loading of `.devcontainer/init.lua` or `.devcontainer/init.vim`
 - Minimal configuration required
-- No modification of LSP protocol messages
+- No modification of communication protocol messages
 
 Requirements:
 - Neovim >= 0.8
@@ -155,58 +159,72 @@ COMMANDS                                            *devcontainer-commands*
   <
 
 ==============================================================================
-LSP INTEGRATION                                        *devcontainer-lsp*
+COMMAND WRAPPING                                 *devcontainer-wrapping*
 
-The plugin provides transparent LSP integration by automatically wrapping
-language server commands to execute inside the Dev Container.
+The plugin provides functions to wrap arbitrary commands for execution inside
+a Dev Container. When a Dev Container is detected in the workspace, commands
+are automatically wrapped with `devcontainer exec`.
 
-When a Dev Container configuration is detected (`.devcontainer/devcontainer.json`
-or `.devcontainer.json`), LSP commands are automatically wrapped with
-`devcontainer exec`, allowing language servers to run inside the container
-while Neovim LSP client runs on the host.
+General Command Wrapping~
 
-LSP Configuration~
-
-Use the wrap_lsp_cmd() function to wrap individual LSP commands:
+Use wrap_cmd() to wrap any command:
 
 >
   require('devcontainer').setup()
 
-  vim.lsp.config('gopls', {
-    cmd = require('devcontainer').wrap_lsp_cmd({ 'gopls' }),
-  })
-
-  vim.lsp.enable('gopls')
-<
-
-For more complex configurations, use wrap_for_lsp() to wrap an entire
-LSP config table:
-
->
   local devcontainer = require('devcontainer')
 
+  -- Wrap an arbitrary command
+  local wrapped = devcontainer.wrap_cmd({ 'node', 'server.js' })
+  -- If Dev Container exists: ['devcontainer', 'exec', '--workspace-folder', '...', 'node', 'server.js']
+  -- Otherwise: ['node', 'server.js'] (unchanged)
+<
+
+How it works~
+
+When wrap_cmd() is called:
+  1. The plugin detects if a Dev Container exists in the workspace
+  2. If found, the Dev Container is started (if not already running)
+  3. The command is wrapped with `devcontainer exec`
+  4. The wrapped command is returned
+
+Example transformation:
+  Original:   ['node', 'server.js']
+  Wrapped:    ['devcontainer', 'exec', '--workspace-folder', '/path/to/project', 'node', 'server.js']
+
+stdin/stdout are preserved through the wrapper, ensuring transparent
+communication with the wrapped process.
+
+==============================================================================
+LSP INTEGRATION                                        *devcontainer-lsp*
+
+The plugin supports LSP integration by wrapping language server commands
+via the command wrapping functions. This allows language servers to run
+inside the Dev Container while Neovim LSP client runs on the host.
+
+For LSP configuration, use wrap_cmd() or wrap_for_lsp() (wraps entire LSP configs):
+
+>
+  require('devcontainer').setup()
+
+  local devcontainer = require('devcontainer')
+
+  -- Wrap an LSP command directly
+  vim.lsp.config('gopls', {
+    cmd = devcontainer.wrap_cmd({ 'gopls' }),
+  })
+
+  -- Or wrap an entire LSP config
   vim.lsp.config('tsserver', devcontainer.wrap_for_lsp({
     cmd = { 'typescript-language-server', '--stdio' },
     name = 'tsserver',
   }))
 
+  vim.lsp.enable('gopls')
   vim.lsp.enable('tsserver')
 <
 
-How it works~
-
-When wrap_lsp_cmd() is called:
-  1. The plugin detects if a Dev Container exists in the workspace
-  2. If found, the Dev Container is started (if not already running)
-  3. The LSP command is wrapped with `devcontainer exec`
-  4. The wrapped command is returned and used by Neovim LSP
-
-Example transformation:
-  Original:   ['gopls']
-  Wrapped:    ['devcontainer', 'exec', '--workspace-folder', '/path/to/project', 'gopls']
-
-stdin/stdout are preserved through the wrapper, ensuring transparent LSP
-communication between Neovim and the language server.
+Note: wrap_cmd() works with any command and is not limited to LSP.
 
 ==============================================================================
 API                                                    *devcontainer-api*
@@ -220,12 +238,34 @@ devcontainer.setup({opts})                       *devcontainer.setup()*
     - auto_start (bool): Automatically start Dev Container (default: true)
     - log_level (string): Logging level (default: 'error')
 
-devcontainer.wrap_lsp_cmd({cmd} [, {workspace}]) *devcontainer.wrap_lsp_cmd()*
-  Wrap an LSP command array for execution inside a Dev Container.
+devcontainer.wrap_cmd({cmd} [, {workspace}])     *devcontainer.wrap_cmd()*
+  Wrap a command array for execution inside a Dev Container.
 
   When a Dev Container is detected in the workspace, this function wraps
   the command with `devcontainer exec`. If no Dev Container is found,
   the original command is returned unchanged.
+
+  Parameters:
+  - {cmd} (table): Array of command arguments (e.g., {'gopls'}, {'node', 'server.js'})
+  - {workspace} (string, optional): Workspace path (defaults to current directory)
+
+  Returns:
+  - (table): Wrapped command array or original command if no Dev Container
+
+  Examples:
+  >
+    local devcontainer = require('devcontainer')
+
+    -- Single argument command
+    local wrapped = devcontainer.wrap_cmd({'gopls'})
+    -- Result: {'devcontainer', 'exec', '--workspace-folder', '/path', 'gopls'}
+
+    -- Multiple arguments
+    local wrapped = devcontainer.wrap_lsp_cmd({cmd} [, {workspace}]) *devcontainer.wrap_lsp_cmd()*
+  Alias for wrap_cmd(). Wraps a command for LSP usage.
+
+  This is a convenience alias that calls wrap_cmd() and can be used
+  interchangeably with wrap_cmd().
 
   Parameters:
   - {cmd} (table): Array of command arguments (e.g., {'gopls'})
@@ -238,17 +278,38 @@ devcontainer.wrap_lsp_cmd({cmd} [, {workspace}]) *devcontainer.wrap_lsp_cmd()*
   >
     local devcontainer = require('devcontainer')
 
-    -- Single argument
-    local wrapped = devcontainer.wrap_lsp_cmd({'gopls'})
+    -- Single argument command
+    local wrapped = devcontainer.wrap_cmd({'gopls'})
     -- Result: {'devcontainer', 'exec', '--workspace-folder', '/path', 'gopls'}
 
     -- Multiple arguments
-    local wrapped = devcontainer.wrap_lsp_cmd({'typescript-language-server', '--stdio'})
-    -- Result: {'devcontainer', 'exec', '--workspace-folder', '/path', 'typescript-language-server', '--stdio'}
+    local wrapped = devcontainer.wrap_cmd({'node', 'server.js', '--port', '3000'})
+    -- Result: {'devcontainer', 'exec', '--workspace-folder', '/path', 'node', 'server.js', '--port', '3000'}
 
     -- No Dev Container
-    local wrapped = devcontainer.wrap_lsp_cmd({'gopls'}, '/other/project')
+    local wrapped = devcontainer.wrap_cmd({'gopls'}, '/other/project')
     -- Result: {'gopls'} (unchanged)
+  <
+
+devcontainer.create_wrapper({workspace})         *devcontainer.create_wrapper()*
+  Create a reusable wrapper function for a specific workspace.
+
+  Returns a closure that can be called multiple times with different commands,
+  all using the same workspace.
+
+  Parameters:
+  - {workspace} (string, optional): Workspace path (defaults to current directory)
+
+  Returns:
+  - (function): Wrapper function that accepts a command array
+
+  Example:
+  >
+    local devcontainer = require('devcontainer')
+    local wrapper = devcontainer.create_wrapper('/path/to/project')
+
+    local cmd1 = wrapper({'gopls'})
+    local cmd2 = wrapper({'node', 'server.js'})
   <
 
 devcontainer.wrap_for_lsp({config} [, {workspace}]) *devcontainer.wrap_for_lsp()*

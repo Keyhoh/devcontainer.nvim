@@ -1,9 +1,10 @@
 # devcontainer.nvim
 
-A Neovim plugin that runs Language Servers inside a Dev Container while Neovim continues to run on the host.
+A Neovim plugin that runs commands inside a Dev Container while Neovim continues to run on the host.
 
 Overview
-- The plugin wraps language server start commands with `devcontainer exec`, preserving stdin/stdout so LSP communication remains unchanged.
+- The plugin wraps command start commands with `devcontainer exec`, preserving stdin/stdout so communication remains unchanged.
+- Particularly useful for language servers and other long-running processes.
 
 Quickstart
 1. Install the `devcontainer` CLI.
@@ -34,22 +35,41 @@ Examples:
 :Devcontainer restart -b
 ```
 
-LSP Integration
-The plugin automatically wraps LSP commands to run inside the Dev Container. When a Dev Container is detected, language servers are transparently executed via `devcontainer exec`.
+Command Wrapping
+The plugin provides functions to wrap arbitrary commands for execution inside a Dev Container. When a Dev Container is detected, commands are transparently executed via `devcontainer exec`.
 
-Example configuration with LSP wrapping:
+### General Command Wrapping
+
+Use `wrap_cmd()` to wrap any command array:
 
 ```lua
 require('devcontainer').setup()
 
--- Configuration example: Go (gopls)
 local devcontainer = require('devcontainer')
 
+-- Wrap an arbitrary command
+local wrapped = devcontainer.wrap_cmd({ 'node', 'server.js' })
+-- If Dev Container exists: ['devcontainer', 'exec', '--workspace-folder', '...', 'node', 'server.js']
+-- Otherwise: ['node', 'server.js'] (unchanged)
+```
+
+### LSP Integration
+
+### LSP Integration
+
+For LSP configuration, use `wrap_cmd()` directly or `wrap_for_lsp()` for wrapping entire configs:
+
+```lua
+require('devcontainer').setup()
+
+local devcontainer = require('devcontainer')
+
+-- Wrap an LSP command directly
 vim.lsp.config('gopls', {
-  cmd = devcontainer.wrap_lsp_cmd({ 'gopls' }),
+  cmd = devcontainer.wrap_cmd({ 'gopls' }),
 })
 
--- Or use wrap_for_lsp to apply wrapping to an entire config
+-- Or wrap an entire LSP config
 vim.lsp.config('tsserver', devcontainer.wrap_for_lsp({
   cmd = { 'typescript-language-server', '--stdio' },
   name = 'tsserver',
@@ -60,17 +80,25 @@ vim.lsp.enable('tsserver')
 ```
 
 API Reference
-- `wrap_lsp_cmd(cmd, workspace)` - Wraps an LSP command array for execution in the Dev Container. Returns the wrapped command array.
+
+**Command Wrapping:**
+- `wrap_cmd(cmd, workspace)` - Wraps a command array for execution in the Dev Container. Returns the wrapped command array or the original if no Dev Container is found.
+  - `cmd` (table): Command array (e.g., `{ 'gopls' }`, `{ 'node', 'server.js' }`)
+  - `workspace` (string, optional): Workspace path (defaults to current directory)
+
+**LSP Configuration (convenience wrappers):**
 - `wrap_for_lsp(config, workspace)` - Wraps an entire LSP config table. Returns a new config with the wrapped command.
 
 Manual verification (minimal)
 - Add a `.devcontainer/devcontainer.json` to a project.
-- Start the container: `:DevcontainerUp`
-- Execute commands in the container: `:DevcontainerExec bash`
+- Start the container: `:Devcontainer up`
+- Execute commands in the container: `:Devcontainer exec bash`
 - When LSP support is implemented, open a file and verify the LSP starts via `devcontainer exec` and that completion/diagnostics work.
 
 Development and testing
-- Implementation lives under `lua/devcontainer/` (init.lua, detection.lua, cli.lua, lsp.lua).
+- Implementation lives under `lua/devcontainer/` with modular structure:
+  - Core modules: `init.lua`, `utils.lua`, `detection.lua`, `cmd_wrapper.lua`
+  - CLI subcommands: `cli/` directory
 - Unit tests: use busted or plenary.nvim.
   - Example single busted test: `busted spec/command_spec.lua --pattern "wrap_cmd"`
 - Integration testing: manual verification with a minimal Dev Container that includes the language server binary.

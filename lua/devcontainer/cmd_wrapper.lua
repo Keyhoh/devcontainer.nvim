@@ -24,9 +24,9 @@ local function ensure_container_running(workspace)
   return true
 end
 
-function M.wrap_lsp_cmd(cmd, workspace)
+function M.wrap_cmd(cmd, workspace)
   if not cmd or #cmd == 0 then
-    utils.log("error", "LSP command array is required")
+    utils.log("error", "Command array is required")
     return cmd
   end
 
@@ -44,7 +44,7 @@ function M.wrap_lsp_cmd(cmd, workspace)
     return nil
   end
 
-  utils.log("debug", "Wrapping LSP command: " .. table.concat(cmd, " "))
+  utils.log("debug", "Wrapping command: " .. table.concat(cmd, " "))
 
   local wrapped = {
     "devcontainer",
@@ -62,11 +62,11 @@ function M.wrap_lsp_cmd(cmd, workspace)
   return wrapped
 end
 
-function M.create_lsp_wrapper(workspace)
+function M.create_wrapper(workspace)
   workspace = workspace or vim.fn.getcwd()
 
   return function(cmd)
-    return M.wrap_lsp_cmd(cmd, workspace)
+    return M.wrap_cmd(cmd, workspace)
   end
 end
 
