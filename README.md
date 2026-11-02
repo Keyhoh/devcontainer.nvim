@@ -43,7 +43,9 @@ Examples:
 
 **Background Execution and Logging**
 
-By default, `up`, `build`, and `restart` operations run asynchronously in the background, allowing Neovim to remain responsive. 
+By default, `:Devcontainer up`, `:Devcontainer build`, and `:Devcontainer restart` run asynchronously in the background, allowing Neovim to remain responsive.
+
+**Note:** When LSP or other tools call `wrap_cmd()`, the container is started synchronously to ensure immediate availability. This guarantees LSP functionality while keeping user-initiated commands responsive.
 
 To see operation progress, configure logging level:
 
@@ -72,11 +74,19 @@ require('devcontainer').setup()
 
 local devcontainer = require('devcontainer')
 
--- Wrap an arbitrary command
+-- Wrap an arbitrary command (synchronous: waits for container to start)
 local wrapped = devcontainer.wrap_cmd({ 'node', 'server.js' })
 -- If Dev Container exists: ['devcontainer', 'exec', '--workspace-folder', '...', 'node', 'server.js']
 -- Otherwise: ['node', 'server.js'] (unchanged)
+
+-- Wrap with async container startup (returns immediately)
+local wrapped_async = devcontainer.wrap_cmd({ 'node', 'server.js' }, nil, { async = true })
 ```
+
+**Options:**
+- `async` (boolean, optional): Start the container asynchronously. Default is `false` (blocks until container is ready).
+  - `false` (default): Ensures container is ready before returning; use for LSP and critical services.
+  - `true`: Starts container in background; use for non-critical tools or when responsiveness is preferred.
 
 ### LSP Integration
 
@@ -107,9 +117,11 @@ vim.lsp.enable('tsserver')
 API Reference
 
 **Command Wrapping:**
-- `wrap_cmd(cmd, workspace)` - Wraps a command array for execution in the Dev Container. Returns the wrapped command array or the original if no Dev Container is found.
+- `wrap_cmd(cmd, workspace, opts)` - Wraps a command array for execution in the Dev Container. Returns the wrapped command array or the original if no Dev Container is found.
   - `cmd` (table): Command array (e.g., `{ 'gopls' }`, `{ 'node', 'server.js' }`)
   - `workspace` (string, optional): Workspace path (defaults to current directory)
+  - `opts` (table, optional): Options table
+    - `async` (boolean): If `true`, starts container asynchronously. Default: `false`
 
 **LSP Configuration (convenience wrappers):**
 - `wrap_for_lsp(config, workspace)` - Wraps an entire LSP config table. Returns a new config with the wrapped command.

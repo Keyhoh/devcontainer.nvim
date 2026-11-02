@@ -6,44 +6,46 @@ local detection = require("devcontainer.detection")
 
 local started_containers = {}
 
-local function ensure_container_running(workspace, callback)
+-- Ensure the container is running.
+-- Used by LSP and other tools that require container availability.
+-- When async=true, starts the container in the background and returns immediately.
+-- When async=false (default), blocks until the container is running.
+local function ensure_container_running(workspace, async)
   workspace = workspace or vim.fn.getcwd()
 
   if started_containers[workspace] then
-    if callback then
-      callback(true)
-    end
     return true
   end
 
   utils.log("debug", "Ensuring container is running for workspace: " .. workspace)
 
-  local function on_container_ready(success)
-    if success then
-      started_containers[workspace] = true
-      utils.log("debug", "Container is now running for workspace: " .. workspace)
-      if callback then
-        callback(true)
+  if async then
+    cli.up(true, function(success)
+      if success then
+        started_containers[workspace] = true
+        utils.log("debug", "Container is now running for workspace: " .. workspace)
       end
-    else
+    end)
+    return true
+  else
+    if not cli.up(false) then
       utils.log("error", "Failed to start Dev Container for workspace: " .. workspace)
-      if callback then
-        callback(false)
-      end
+      return false
     end
+    started_containers[workspace] = true
+    utils.log("debug", "Container is now running for workspace: " .. workspace)
+    return true
   end
-
-  cli.up(true, on_container_ready)
-  return false
 end
 
-function M.wrap_cmd(cmd, workspace)
+function M.wrap_cmd(cmd, workspace, opts)
   if not cmd or #cmd == 0 then
     utils.log("error", "Command array is required")
     return cmd
   end
 
   workspace = workspace or vim.fn.getcwd()
+  opts = opts or {}
 
   local has_dc, dc_path = detection.has_devcontainer(workspace)
   if not has_dc then
@@ -53,7 +55,7 @@ function M.wrap_cmd(cmd, workspace)
 
   utils.log("debug", "Dev Container detected at: " .. dc_path)
 
-  if not ensure_container_running(workspace) then
+  if not ensure_container_running(workspace, opts.async) then
     return nil
   end
 
@@ -75,11 +77,12 @@ function M.wrap_cmd(cmd, workspace)
   return wrapped
 end
 
-function M.create_wrapper(workspace)
+function M.create_wrapper(workspace, opts)
   workspace = workspace or vim.fn.getcwd()
+  opts = opts or {}
 
   return function(cmd)
-    return M.wrap_cmd(cmd, workspace)
+    return M.wrap_cmd(cmd, workspace, opts)
   end
 end
 
