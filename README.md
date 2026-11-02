@@ -18,22 +18,47 @@ require('devcontainer').setup()
 Commands
 The plugin provides the following user command:
 
-- `:Devcontainer up` - Start the Dev Container for the current workspace.
+- `:Devcontainer up` - Start the Dev Container for the current workspace (default: async/background).
+- `:Devcontainer up --sync` - Start the Dev Container synchronously (blocks until complete).
 - `:Devcontainer exec {cmd}` - Execute a command inside the Dev Container in an interactive terminal.
-- `:Devcontainer build` - Build the Dev Container image.
-- `:Devcontainer restart` - Restart the Dev Container (stop and start).
-- `:Devcontainer restart --build|-b` - Rebuild and restart the Dev Container.
+- `:Devcontainer build` - Build the Dev Container image (default: async/background).
+- `:Devcontainer build --sync` - Build the Dev Container synchronously.
+- `:Devcontainer restart` - Restart the Dev Container (default: async/background).
+- `:Devcontainer restart --sync` - Restart synchronously.
+- `:Devcontainer restart --build|-b` - Rebuild and restart the Dev Container (async by default).
+- `:Devcontainer restart --build --sync` - Rebuild and restart synchronously.
 
 Examples:
 ```vim
 :Devcontainer up
+:Devcontainer up --sync
 :Devcontainer exec bash
 :Devcontainer exec psql -h localhost
 :Devcontainer build
+:Devcontainer build --sync
 :Devcontainer restart
 :Devcontainer restart --build
-:Devcontainer restart -b
+:Devcontainer restart --build --sync
 ```
+
+**Background Execution and Logging**
+
+By default, `up`, `build`, and `restart` operations run asynchronously in the background, allowing Neovim to remain responsive. 
+
+To see operation progress, configure logging level:
+
+```lua
+require('devcontainer').setup({
+  log_level = 'debug',  -- Shows detailed logs including command output
+})
+```
+
+Log levels:
+- `'error'` - Only errors (default)
+- `'info'` - Errors and status messages
+- `'debug'` - Errors, status, and detailed command output
+
+Logs are sent to Neovim's built-in notify system and appear in `:messages` history. When an operation is running, you'll see a notification confirming it started.
 
 Command Wrapping
 The plugin provides functions to wrap arbitrary commands for execution inside a Dev Container. When a Dev Container is detected, commands are transparently executed via `devcontainer exec`.

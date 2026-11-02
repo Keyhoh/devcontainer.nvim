@@ -42,11 +42,24 @@ function M.setup(opts)
     end
 
     if subcommand == "up" then
-      local success = cli.up()
-      if success then
-        vim.notify("Dev Container started successfully", vim.log.levels.INFO)
+      local async = true
+      for i = 2, #opts_arg.fargs do
+        if opts_arg.fargs[i] == "--sync" then
+          async = false
+          break
+        end
+      end
+
+      if async then
+        cli.up(true)
+        vim.notify("Starting Dev Container in background...", vim.log.levels.INFO)
       else
-        vim.notify("Failed to start Dev Container", vim.log.levels.ERROR)
+        local success = cli.up(false)
+        if success then
+          vim.notify("Dev Container started successfully", vim.log.levels.INFO)
+        else
+          vim.notify("Failed to start Dev Container", vim.log.levels.ERROR)
+        end
       end
     elseif subcommand == "exec" then
       local args = {}
@@ -69,26 +82,46 @@ function M.setup(opts)
       vim.cmd("enew")
       vim.fn.termopen(wrapped_cmd)
     elseif subcommand == "build" then
-      local success = cli.build()
-      if success then
-        vim.notify("Dev Container built successfully", vim.log.levels.INFO)
-      else
-        vim.notify("Failed to build Dev Container", vim.log.levels.ERROR)
-      end
-    elseif subcommand == "restart" then
-      local should_build = false
+      local async = true
       for i = 2, #opts_arg.fargs do
-        if opts_arg.fargs[i] == "--build" or opts_arg.fargs[i] == "-b" then
-          should_build = true
+        if opts_arg.fargs[i] == "--sync" then
+          async = false
           break
         end
       end
 
-      local success = cli.restart(should_build)
-      if success then
-        vim.notify("Dev Container restarted successfully", vim.log.levels.INFO)
+      if async then
+        cli.build(true)
+        vim.notify("Building Dev Container in background...", vim.log.levels.INFO)
       else
-        vim.notify("Failed to restart Dev Container", vim.log.levels.ERROR)
+        local success = cli.build(false)
+        if success then
+          vim.notify("Dev Container built successfully", vim.log.levels.INFO)
+        else
+          vim.notify("Failed to build Dev Container", vim.log.levels.ERROR)
+        end
+      end
+    elseif subcommand == "restart" then
+      local should_build = false
+      local async = true
+      for i = 2, #opts_arg.fargs do
+        if opts_arg.fargs[i] == "--build" or opts_arg.fargs[i] == "-b" then
+          should_build = true
+        elseif opts_arg.fargs[i] == "--sync" then
+          async = false
+        end
+      end
+
+      if async then
+        cli.restart(should_build, true)
+        vim.notify("Restarting Dev Container in background...", vim.log.levels.INFO)
+      else
+        local success = cli.restart(should_build, false)
+        if success then
+          vim.notify("Dev Container restarted successfully", vim.log.levels.INFO)
+        else
+          vim.notify("Failed to restart Dev Container", vim.log.levels.ERROR)
+        end
       end
     else
       vim.notify("Unknown subcommand: " .. subcommand, vim.log.levels.ERROR)

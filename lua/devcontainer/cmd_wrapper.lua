@@ -6,22 +6,35 @@ local detection = require("devcontainer.detection")
 
 local started_containers = {}
 
-local function ensure_container_running(workspace)
+local function ensure_container_running(workspace, callback)
   workspace = workspace or vim.fn.getcwd()
 
   if started_containers[workspace] then
+    if callback then
+      callback(true)
+    end
     return true
   end
 
   utils.log("debug", "Ensuring container is running for workspace: " .. workspace)
-  if not cli.up() then
-    utils.log("error", "Failed to start Dev Container for workspace: " .. workspace)
-    return false
+
+  local function on_container_ready(success)
+    if success then
+      started_containers[workspace] = true
+      utils.log("debug", "Container is now running for workspace: " .. workspace)
+      if callback then
+        callback(true)
+      end
+    else
+      utils.log("error", "Failed to start Dev Container for workspace: " .. workspace)
+      if callback then
+        callback(false)
+      end
+    end
   end
 
-  started_containers[workspace] = true
-  utils.log("debug", "Container is now running for workspace: " .. workspace)
-  return true
+  cli.up(true, on_container_ready)
+  return false
 end
 
 function M.wrap_cmd(cmd, workspace)
