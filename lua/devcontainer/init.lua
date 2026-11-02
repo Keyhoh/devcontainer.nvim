@@ -65,6 +65,8 @@ function M.setup(opts)
         return
       end
 
+      -- Create a new buffer for each exec to avoid "requires unmodified buffer" error
+      vim.cmd("enew")
       vim.fn.termopen(wrapped_cmd)
     elseif subcommand == "build" then
       local success = cli.build()
