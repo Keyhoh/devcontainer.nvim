@@ -19,12 +19,19 @@ The plugin provides the following user command:
 
 - `:Devcontainer up` - Start the Dev Container for the current workspace.
 - `:Devcontainer exec {cmd}` - Execute a command inside the Dev Container in an interactive terminal.
+- `:Devcontainer build` - Build the Dev Container image.
+- `:Devcontainer restart` - Restart the Dev Container (stop and start).
+- `:Devcontainer restart --build|-b` - Rebuild and restart the Dev Container.
 
 Examples:
 ```vim
 :Devcontainer up
 :Devcontainer exec bash
 :Devcontainer exec psql -h localhost
+:Devcontainer build
+:Devcontainer restart
+:Devcontainer restart --build
+:Devcontainer restart -b
 ```
 
 LSP Integration

@@ -130,6 +130,30 @@ COMMANDS                                            *devcontainer-commands*
     :Devcontainer exec npm run dev
   <
 
+:Devcontainer build                                    *:Devcontainer-build*
+  Build the Dev Container image for the current workspace. This rebuilds
+  the container image according to the devcontainer.json configuration.
+
+  Example:
+  >
+    :Devcontainer build
+  <
+
+:Devcontainer restart [--build|-b]                 *:Devcontainer-restart*
+  Restart the Dev Container for the current workspace. Stops the container
+  and starts it again, preserving the filesystem but reloading the environment.
+
+  Options:
+    --build, -b    Build the Dev Container image before restarting.
+                   This rebuilds the image and then restarts the container.
+
+  Examples:
+  >
+    :Devcontainer restart
+    :Devcontainer restart --build
+    :Devcontainer restart -b
+  <
+
 ==============================================================================
 LSP INTEGRATION                                        *devcontainer-lsp*
 
