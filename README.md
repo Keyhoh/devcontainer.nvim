@@ -83,4 +83,3 @@ Specification and agent guidance
 Contributing
 - Open an issue to discuss major changes. Include tests and documentation with pull requests.
 
-(Generated: 2026-09-27)
