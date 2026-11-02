@@ -33,6 +33,58 @@ function M.setup(opts)
   
   load_devcontainer_init()
 
+  vim.api.nvim_create_user_command("Devcontainer", function(opts_arg)
+    local subcommand = opts_arg.fargs[1]
+    
+    if not subcommand then
+      vim.notify("Usage: :Devcontainer {up|exec} [args]", vim.log.levels.INFO)
+      return
+    end
+    
+    if subcommand == "up" then
+      local success = cli.up()
+      if success then
+        vim.notify("Dev Container started successfully", vim.log.levels.INFO)
+      else
+        vim.notify("Failed to start Dev Container", vim.log.levels.ERROR)
+      end
+    elseif subcommand == "exec" then
+      local args = {}
+      for i = 2, #opts_arg.fargs do
+        table.insert(args, opts_arg.fargs[i])
+      end
+      
+      if #args == 0 then
+        vim.notify("Usage: :Devcontainer exec {cmd} [args]", vim.log.levels.INFO)
+        return
+      end
+      
+      local wrapped_cmd = cli.exec(args)
+      if not wrapped_cmd then
+        vim.notify("Failed to prepare devcontainer exec command", vim.log.levels.ERROR)
+        return
+      end
+      
+      vim.fn.termopen(wrapped_cmd)
+    else
+      vim.notify("Unknown subcommand: " .. subcommand, vim.log.levels.ERROR)
+    end
+  end, {
+    desc = "Dev Container subcommands (up, exec)",
+    nargs = "+",
+    complete = function(_, cmd_line)
+      local subcommands = { "up", "exec" }
+      local parts = vim.split(cmd_line, " ")
+      if #parts == 2 then
+        -- Completing subcommand
+        return subcommands
+      end
+      -- No completion for args after subcommand
+      return {}
+    end,
+  })
+  
+  -- Deprecated alias for backward compatibility
   vim.api.nvim_create_user_command("DevcontainerUp", function()
     local success = cli.up()
     if success then
@@ -41,7 +93,7 @@ function M.setup(opts)
       vim.notify("Failed to start Dev Container", vim.log.levels.ERROR)
     end
   end, {
-    desc = "Start Dev Container for current workspace",
+    desc = "[Deprecated] Use :Devcontainer up instead. Start Dev Container for current workspace",
   })
 
   vim.api.nvim_create_user_command("DevcontainerExec", function(opts)
@@ -54,7 +106,7 @@ function M.setup(opts)
 
     vim.fn.termopen(wrapped_cmd)
   end, {
-    desc = "Execute command in Dev Container (interactive terminal)",
+    desc = "[Deprecated] Use :Devcontainer exec instead. Execute command in Dev Container (interactive terminal)",
     nargs = "+",
   })
 end

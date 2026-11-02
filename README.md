@@ -15,17 +15,21 @@ require('devcontainer').setup()
 ```
 
 Commands
-The plugin provides the following user commands:
+The plugin provides the following user command:
 
-- `:DevcontainerUp` - Start the Dev Container for the current workspace.
-- `:DevcontainerExec {cmd}` - Execute a command inside the Dev Container in an interactive terminal.
+- `:Devcontainer up` - Start the Dev Container for the current workspace.
+- `:Devcontainer exec {cmd}` - Execute a command inside the Dev Container in an interactive terminal.
 
 Examples:
 ```vim
-:DevcontainerUp
-:DevcontainerExec bash
-:DevcontainerExec psql -h localhost
+:Devcontainer up
+:Devcontainer exec bash
+:Devcontainer exec psql -h localhost
 ```
+
+**Deprecated aliases** (still supported for backward compatibility):
+- `:DevcontainerUp` - Use `:Devcontainer up` instead.
+- `:DevcontainerExec` - Use `:Devcontainer exec` instead.
 
 LSP Integration
 The plugin automatically wraps LSP commands to run inside the Dev Container. When a Dev Container is detected, language servers are transparently executed via `devcontainer exec`.

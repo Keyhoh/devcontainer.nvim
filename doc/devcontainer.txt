@@ -105,16 +105,16 @@ Example `.devcontainer/init.vim`:
 ==============================================================================
 COMMANDS                                            *devcontainer-commands*
 
-:DevcontainerUp                                       *:DevcontainerUp*
+:Devcontainer up                                        *:Devcontainer*
   Start the Dev Container for the current workspace (current directory).
   Displays a notification on success or failure.
 
   Example:
   >
-    :DevcontainerUp
+    :Devcontainer up
   <
 
-:DevcontainerExec {cmd}                             *:DevcontainerExec*
+:Devcontainer exec {cmd}                                *:Devcontainer-exec*
   Execute a command inside the Dev Container in an interactive terminal.
   The command is wrapped with `devcontainer exec` and run in a terminal
   buffer, allowing full interactivity (stdin/stdout).
@@ -124,11 +124,23 @@ COMMANDS                                            *devcontainer-commands*
 
   Examples:
   >
-    :DevcontainerExec bash
-    :DevcontainerExec psql -h localhost -U postgres
-    :DevcontainerExec node
-    :DevcontainerExec npm run dev
+    :Devcontainer exec bash
+    :Devcontainer exec psql -h localhost -U postgres
+    :Devcontainer exec node
+    :Devcontainer exec npm run dev
   <
+
+Deprecated commands~
+
+The following commands are deprecated but still supported for backward compatibility:
+
+:DevcontainerUp                                       *:DevcontainerUp*
+  Deprecated. Use |:Devcontainer| up instead.
+  Start the Dev Container for the current workspace (current directory).
+
+:DevcontainerExec {cmd}                             *:DevcontainerExec*
+  Deprecated. Use |:Devcontainer| exec instead.
+  Execute a command inside the Dev Container in an interactive terminal.
 
 ==============================================================================
 LSP INTEGRATION                                        *devcontainer-lsp*
