@@ -9,5 +9,4 @@ return {
   build = lifecycle.build,
   restart = lifecycle.restart,
   exec = exec.exec,
-  wrap_cmd = exec.wrap_cmd,
 }

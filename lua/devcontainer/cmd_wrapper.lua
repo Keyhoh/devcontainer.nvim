@@ -38,7 +38,7 @@ local function ensure_container_running(workspace, async)
   end
 end
 
-function M.wrap_cmd(cmd, workspace, opts)
+function M.exec_cmd(cmd, workspace, opts)
   if not cmd or #cmd == 0 then
     utils.log("error", "Command array is required")
     return cmd
@@ -77,12 +77,12 @@ function M.wrap_cmd(cmd, workspace, opts)
   return wrapped
 end
 
-function M.create_wrapper(workspace, opts)
+function M.create_exec_wrapper(workspace, opts)
   workspace = workspace or vim.fn.getcwd()
   opts = opts or {}
 
   return function(cmd)
-    return M.wrap_cmd(cmd, workspace, opts)
+    return M.exec_cmd(cmd, workspace, opts)
   end
 end
 

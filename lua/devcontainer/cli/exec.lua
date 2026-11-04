@@ -32,14 +32,5 @@ function M.exec(cmd)
   return wrapped_cmd
 end
 
-function M.wrap_cmd(cmd)
-  if not cmd or #cmd == 0 then
-    utils.log("error", "command array is required")
-    return cmd
-  end
-
-  return M.exec(cmd)
-end
-
 return M
 

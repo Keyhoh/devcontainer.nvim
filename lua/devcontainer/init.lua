@@ -142,9 +142,9 @@ function M.setup(opts)
   })
 end
 
--- Command wrapping functions
-M.wrap_cmd = cmd_wrapper.wrap_cmd
-M.create_wrapper = cmd_wrapper.create_wrapper
+-- Command execution functions
+M.exec_cmd = cmd_wrapper.exec_cmd
+M.create_exec_wrapper = cmd_wrapper.create_exec_wrapper
 
 function M.wrap_for_lsp(config, workspace)
   workspace = workspace or vim.fn.getcwd()
@@ -153,7 +153,7 @@ function M.wrap_for_lsp(config, workspace)
     return config
   end
 
-  local wrapped_cmd = M.wrap_cmd(config.cmd, workspace)
+  local wrapped_cmd = M.exec_cmd(config.cmd, workspace)
   if wrapped_cmd then
     local new_config = vim.tbl_extend("force", config, { cmd = wrapped_cmd })
     return new_config
