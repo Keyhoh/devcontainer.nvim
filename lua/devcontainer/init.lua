@@ -1,7 +1,7 @@
 local M = {}
 
 local cli = require("devcontainer.cli")
-local cmd_wrapper = require("devcontainer.cmd_wrapper")
+local cmd_exec = require("devcontainer.cmd_exec")
 local detection = require("devcontainer.detection")
 
 local function load_devcontainer_init()
@@ -143,8 +143,8 @@ function M.setup(opts)
 end
 
 -- Command execution functions
-M.exec_cmd = cmd_wrapper.exec_cmd
-M.create_exec_wrapper = cmd_wrapper.create_exec_wrapper
+M.exec_cmd = cmd_exec.exec_cmd
+M.create_exec_wrapper = cmd_exec.create_exec_wrapper
 
 function M.wrap_for_lsp(config, workspace)
   workspace = workspace or vim.fn.getcwd()
