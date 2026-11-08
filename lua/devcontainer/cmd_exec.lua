@@ -3,8 +3,7 @@ local M = {}
 local lifecycle = require("devcontainer.cli.lifecycle")
 local utils = require("devcontainer.utils")
 local detection = require("devcontainer.detection")
-
-local container_states = {}
+local state = require("devcontainer.state")
 
 local function resolve_workspace(opts)
   opts = opts or {}
@@ -33,35 +32,35 @@ local function ensure_container_running(workspace, async)
     return true
   end
 
-  local state = container_states[workspace]
-  if state == "running" then
+  local container_state = state.get_container_state(workspace)
+  if container_state == "running" then
     return true
   end
 
-  if async and state == "starting" then
+  if async and container_state == "starting" then
     return true
   end
 
   utils.log("debug", "Ensuring container is running for workspace: " .. workspace)
 
   if async then
-    container_states[workspace] = "starting"
+    state.set_container_state(workspace, "starting")
     lifecycle.up(true, function(success)
       if success then
-        container_states[workspace] = "running"
+        state.set_container_state(workspace, "running")
         utils.log("debug", "Container is now running for workspace: " .. workspace)
       else
-        container_states[workspace] = nil
+        state.set_container_state(workspace, nil)
       end
     end, workspace)
     return true
   else
     if not lifecycle.up(false, nil, workspace) then
-      container_states[workspace] = nil
+      state.set_container_state(workspace, nil)
       utils.log("error", "Failed to start Dev Container for workspace: " .. workspace)
       return false
     end
-    container_states[workspace] = "running"
+    state.set_container_state(workspace, "running")
     utils.log("debug", "Container is now running for workspace: " .. workspace)
     return true
   end

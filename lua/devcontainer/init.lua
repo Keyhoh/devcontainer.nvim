@@ -5,6 +5,7 @@ local devcontainer_command = require("devcontainer.commands.devcontainer_command
 local init_loader = require("devcontainer.bootstrap.init_loader")
 local lifecycle = require("devcontainer.cli.lifecycle")
 local detection = require("devcontainer.detection")
+local state = require("devcontainer.state")
 local utils = require("devcontainer.utils")
 
 function M.setup(opts)
@@ -19,8 +20,16 @@ function M.setup(opts)
 
   local workspace = vim.fn.getcwd()
   local has_dc = detection.has_devcontainer(workspace)
-  if has_dc then
-    lifecycle.up(true, nil, workspace)
+  local container_state = state.get_container_state(workspace)
+  if has_dc and container_state ~= "starting" and container_state ~= "running" then
+    state.set_container_state(workspace, "starting")
+    lifecycle.up(true, function(success)
+      if success then
+        state.set_container_state(workspace, "running")
+      else
+        state.set_container_state(workspace, nil)
+      end
+    end, workspace)
   end
 end
 
