@@ -27,6 +27,8 @@ The plugin provides the following user command:
 - `:Devcontainer restart --sync` - Restart synchronously.
 - `:Devcontainer restart --build|-b` - Rebuild and restart the Dev Container (async by default).
 - `:Devcontainer restart --build --sync` - Rebuild and restart synchronously.
+- `:Devcontainer logs` - Open lifecycle logs in a floating window.
+- `:Devcontainer logs --clear` - Clear the lifecycle log file.
 
 Examples:
 ```vim
@@ -39,28 +41,33 @@ Examples:
 :Devcontainer restart
 :Devcontainer restart --build
 :Devcontainer restart --build --sync
+:Devcontainer logs
+:Devcontainer logs --clear
 ```
 
 **Background Execution and Logging**
 
-By default, `:Devcontainer up`, `:Devcontainer build`, and `:Devcontainer restart` run asynchronously in the background, allowing Neovim to remain responsive.
+By default, `:Devcontainer up`, `:Devcontainer build`, and `:Devcontainer restart` run asynchronously in the background.
 
-**Note:** When LSP or other tools call `exec_cmd()`, the container is started synchronously to ensure immediate availability. This guarantees LSP functionality while keeping user-initiated commands responsive.
+Use `--sync` with these lifecycle commands when you want blocking execution.
 
 To see operation progress, configure logging level:
 
 ```lua
 require('devcontainer').setup({
-  log_level = 'debug',  -- Shows detailed logs including command output
+  log_level = 'debug',
 })
 ```
 
 Log levels:
-- `'error'` - Only errors (default)
-- `'info'` - Errors and status messages
-- `'debug'` - Errors, status, and detailed command output
+- `'error'` - Only error notifications (default)
+- `'info'` - Error and info notifications
+- `'debug'` - Same notifications as `'info'` + write debug output to log file
 
-Logs are sent to Neovim's built-in notify system and appear in `:messages` history. When an operation is running, you'll see a notification confirming it started.
+Logging behavior:
+- Notifications (`vim.notify` / `:messages`): `error` and `info`
+- Debug command output: log file at `stdpath("cache") .. "/devcontainer.nvim.log"`
+- Log viewer: `:Devcontainer logs` (floating window)
 
 Command Wrapping
 The plugin provides functions to wrap arbitrary commands for execution inside a Dev Container. When a Dev Container is detected, commands are transparently executed via `devcontainer exec`.
@@ -80,15 +87,20 @@ local wrapped = devcontainer.exec_cmd({ 'node', 'server.js' })
 -- Otherwise: ['node', 'server.js'] (unchanged)
 
 -- Wrap with async container startup (returns immediately)
-local wrapped_async = devcontainer.exec_cmd({ 'node', 'server.js' }, nil, { async = true })
+local wrapped_async = devcontainer.exec_cmd({ 'node', 'server.js' }, { async = true })
+
+-- Specify workspace folder via options
+local wrapped_for_other_dir = devcontainer.exec_cmd(
+  { 'node', 'server.js' },
+  { workspace_folder = '/other/project' }
+)
 ```
 
 **Options:**
 - `async` (boolean, optional): Start the container asynchronously. Default is `false` (blocks until container is ready).
   - `false` (default): Ensures container is ready before returning; use for LSP and critical services.
   - `true`: Starts container in background; use for non-critical tools or when responsiveness is preferred.
-
-### LSP Integration
+- `workspace_folder` (string, optional): Workspace path to use instead of current directory.
 
 ### LSP Integration
 
@@ -117,28 +129,28 @@ vim.lsp.enable('tsserver')
 API Reference
 
 **Command Wrapping:**
-- `exec_cmd(cmd, workspace, opts)` - Wraps a command array for execution in the Dev Container via `devcontainer exec`. Returns the wrapped command array or the original if no Dev Container is found.
+- `exec_cmd(cmd, opts)` - Wraps a command array for execution in the Dev Container via `devcontainer exec`. Returns the wrapped command array or the original if no Dev Container is found.
   - `cmd` (table): Command array (e.g., `{ 'gopls' }`, `{ 'node', 'server.js' }`)
-  - `workspace` (string, optional): Workspace path (defaults to current directory)
   - `opts` (table, optional): Options table
     - `async` (boolean): If `true`, starts container asynchronously. Default: `false`
-- `create_exec_wrapper(workspace, opts)` - Creates a reusable wrapper function for the given workspace.
-  - `workspace` (string, optional): Workspace path (defaults to current directory)
+    - `workspace_folder` (string): Workspace path (defaults to current directory)
+- `create_exec_wrapper(opts)` - Creates a reusable wrapper function for the given workspace.
   - `opts` (table, optional): Options table
+    - `workspace_folder` (string): Workspace path (defaults to current directory)
   - Returns a function that accepts a command array and returns the wrapped command
 
 **LSP Configuration (convenience wrappers):**
-- `wrap_for_lsp(config, workspace)` - Wraps an entire LSP config table. Returns a new config with the wrapped command.
+- `wrap_for_lsp(config, opts)` - Wraps an entire LSP config table. Returns a new config with the wrapped command.
 
 Manual verification (minimal)
 - Add a `.devcontainer/devcontainer.json` to a project.
 - Start the container: `:Devcontainer up`
 - Execute commands in the container: `:Devcontainer exec bash`
-- When LSP support is implemented, open a file and verify the LSP starts via `devcontainer exec` and that completion/diagnostics work.
+- Open a file and verify the configured LSP starts via `devcontainer exec` and that completion/diagnostics work.
 
 Development and testing
 - Implementation lives under `lua/devcontainer/` with modular structure:
-  - Core modules: `init.lua`, `utils.lua`, `detection.lua`, `cmd_wrapper.lua`
+  - Core modules: `init.lua`, `utils.lua`, `detection.lua`, `cmd_exec.lua`
   - CLI subcommands: `cli/` directory
 - Unit tests: use busted or plenary.nvim.
   - Example single busted test: `busted spec/command_spec.lua --pattern "exec_cmd"`
@@ -158,4 +170,3 @@ Specification and agent guidance
 
 Contributing
 - Open an issue to discuss major changes. Include tests and documentation with pull requests.
-

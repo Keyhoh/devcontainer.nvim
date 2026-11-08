@@ -1,10 +1,15 @@
 local M = {}
 
-local cli = require("devcontainer.cli")
+local lifecycle = require("devcontainer.cli.lifecycle")
 local utils = require("devcontainer.utils")
 local detection = require("devcontainer.detection")
 
 local started_containers = {}
+
+local function resolve_workspace(opts)
+  opts = opts or {}
+  return opts.workspace_folder or vim.fn.getcwd(), opts
+end
 
 -- Ensure the container is running.
 -- Used by LSP and other tools that require container availability.
@@ -20,7 +25,7 @@ local function ensure_container_running(workspace, async)
   utils.log("debug", "Ensuring container is running for workspace: " .. workspace)
 
   if async then
-    cli.up(true, function(success)
+    lifecycle.up(true, function(success)
       if success then
         started_containers[workspace] = true
         utils.log("debug", "Container is now running for workspace: " .. workspace)
@@ -28,7 +33,7 @@ local function ensure_container_running(workspace, async)
     end)
     return true
   else
-    if not cli.up(false) then
+    if not lifecycle.up(false) then
       utils.log("error", "Failed to start Dev Container for workspace: " .. workspace)
       return false
     end
@@ -38,14 +43,14 @@ local function ensure_container_running(workspace, async)
   end
 end
 
-function M.exec_cmd(cmd, workspace, opts)
+function M.exec_cmd(cmd, opts)
   if not cmd or #cmd == 0 then
     utils.log("error", "Command array is required")
     return cmd
   end
 
-  workspace = workspace or vim.fn.getcwd()
-  opts = opts or {}
+  local workspace
+  workspace, opts = resolve_workspace(opts)
 
   local has_dc, dc_path = detection.has_devcontainer(workspace)
   if not has_dc then
@@ -77,12 +82,12 @@ function M.exec_cmd(cmd, workspace, opts)
   return wrapped
 end
 
-function M.create_exec_wrapper(workspace, opts)
-  workspace = workspace or vim.fn.getcwd()
-  opts = opts or {}
+function M.create_exec_wrapper(opts)
+  local workspace
+  workspace, opts = resolve_workspace(opts)
 
   return function(cmd)
-    return M.exec_cmd(cmd, workspace, opts)
+    return M.exec_cmd(cmd, vim.tbl_extend("keep", { workspace_folder = workspace }, opts))
   end
 end
 

@@ -76,9 +76,14 @@ The plugin is configured via the setup() function:
 <
 
 log_level~
-  - 'error': Only log errors
-  - 'info': Log errors and info messages
-  - 'debug': Log all messages including debug output
+  - 'error': Show only error notifications
+  - 'info': Show error and info notifications
+  - 'debug': Same notifications as 'info' and write debug output to log file
+
+Debug log file:
+  - Path: stdpath("cache") .. "/devcontainer.nvim.log"
+  - View: :Devcontainer logs
+  - Clear: :Devcontainer logs --clear
 
 Dev Container Init Files~
 
@@ -111,7 +116,10 @@ COMMANDS                                            *devcontainer-commands*
 
 :Devcontainer up                                        *:Devcontainer*
   Start the Dev Container for the current workspace (current directory).
-  Displays a notification on success or failure.
+  Runs asynchronously by default. Use --sync to run in foreground.
+
+  Options:
+    --sync        Run in foreground and block until completion.
 
   Example:
   >
@@ -137,6 +145,10 @@ COMMANDS                                            *devcontainer-commands*
 :Devcontainer build                                    *:Devcontainer-build*
   Build the Dev Container image for the current workspace. This rebuilds
   the container image according to the devcontainer.json configuration.
+  Runs asynchronously by default. Use --sync to run in foreground.
+
+  Options:
+    --sync        Run in foreground and block until completion.
 
   Example:
   >
@@ -146,16 +158,30 @@ COMMANDS                                            *devcontainer-commands*
 :Devcontainer restart [--build|-b]                 *:Devcontainer-restart*
   Restart the Dev Container for the current workspace. Stops the container
   and starts it again, preserving the filesystem but reloading the environment.
+  Runs asynchronously by default. Use --sync to run in foreground.
 
   Options:
     --build, -b    Build the Dev Container image before restarting.
                    This rebuilds the image and then restarts the container.
+    --sync         Run in foreground and block until completion.
 
   Examples:
   >
     :Devcontainer restart
     :Devcontainer restart --build
     :Devcontainer restart -b
+  <
+
+:Devcontainer logs [--clear]                        *:Devcontainer-logs*
+  Open lifecycle logs in a floating window.
+
+  Options:
+    --clear        Clear the log file instead of opening the viewer.
+
+  Examples:
+  >
+    :Devcontainer logs
+    :Devcontainer logs --clear
   <
 
 ==============================================================================
@@ -238,7 +264,7 @@ devcontainer.setup({opts})                       *devcontainer.setup()*
     - auto_start (bool): Automatically start Dev Container (default: true)
     - log_level (string): Logging level (default: 'error')
 
-devcontainer.exec_cmd({cmd} [, {workspace}])     *devcontainer.exec_cmd()*
+devcontainer.exec_cmd({cmd} [, {opts}])          *devcontainer.exec_cmd()*
   Wrap a command array for execution inside a Dev Container via devcontainer exec.
 
   When a Dev Container is detected in the workspace, this function wraps
@@ -247,9 +273,9 @@ devcontainer.exec_cmd({cmd} [, {workspace}])     *devcontainer.exec_cmd()*
 
   Parameters:
   - {cmd} (table): Array of command arguments (e.g., {'gopls'}, {'node', 'server.js'})
-  - {workspace} (string, optional): Workspace path (defaults to current directory)
   - {opts} (table, optional): Options table
     - async (boolean): If true, starts container asynchronously (default: false)
+    - workspace_folder (string): Workspace path (defaults to current directory)
 
   Returns:
   - (table): Wrapped command array or original command if no Dev Container
@@ -266,20 +292,20 @@ devcontainer.exec_cmd({cmd} [, {workspace}])     *devcontainer.exec_cmd()*
     local wrapped = devcontainer.exec_cmd({'node', 'server.js', '--port', '3000'})
     -- Result: {'devcontainer', 'exec', '--workspace-folder', '/path', 'node', 'server.js', '--port', '3000'}
 
-    -- No Dev Container
-    local wrapped = devcontainer.exec_cmd({'gopls'}, '/other/project')
+    -- Use a specific workspace folder
+    local wrapped = devcontainer.exec_cmd({'gopls'}, {workspace_folder = '/other/project'})
     -- Result: {'gopls'} (unchanged)
   <
 
-devcontainer.create_exec_wrapper({workspace})    *devcontainer.create_exec_wrapper()*
+devcontainer.create_exec_wrapper([{opts}])       *devcontainer.create_exec_wrapper()*
   Create a reusable wrapper function for a specific workspace.
 
   Returns a closure that can be called multiple times with different commands,
   all using the same workspace.
 
   Parameters:
-  - {workspace} (string, optional): Workspace path (defaults to current directory)
   - {opts} (table, optional): Options table
+    - workspace_folder (string): Workspace path (defaults to current directory)
 
   Returns:
   - (function): Wrapper function that accepts a command array
@@ -287,13 +313,13 @@ devcontainer.create_exec_wrapper({workspace})    *devcontainer.create_exec_wrapp
   Example:
   >
     local devcontainer = require('devcontainer')
-    local wrapper = devcontainer.create_exec_wrapper('/path/to/project')
+    local wrapper = devcontainer.create_exec_wrapper({workspace_folder = '/path/to/project'})
 
     local cmd1 = wrapper({'gopls'})
     local cmd2 = wrapper({'node', 'server.js'})
   <
 
-devcontainer.wrap_for_lsp({config} [, {workspace}]) *devcontainer.wrap_for_lsp()*
+devcontainer.wrap_for_lsp({config} [, {opts}])   *devcontainer.wrap_for_lsp()*
   Wrap an entire LSP configuration table by wrapping its cmd field.
 
   This is a convenience function for wrapping an entire LSP config
@@ -301,7 +327,9 @@ devcontainer.wrap_for_lsp({config} [, {workspace}]) *devcontainer.wrap_for_lsp()
 
   Parameters:
   - {config} (table): LSP configuration table with cmd field
-  - {workspace} (string, optional): Workspace path (defaults to current directory)
+  - {opts} (table, optional): Options table
+    - workspace_folder (string): Workspace path (defaults to current directory)
+    - async (boolean): If true, starts container asynchronously (default: false)
 
   Returns:
   - (table): New config table with wrapped cmd, or original config if no cmd
@@ -325,9 +353,25 @@ devcontainer.wrap_for_lsp({config} [, {workspace}]) *devcontainer.wrap_for_lsp()
 Module: devcontainer.cli                              *devcontainer-cli*
   Internal module providing low-level Dev Container CLI operations.
 
-  devcontainer.cli.up()                            *devcontainer.cli.up()*
+  devcontainer.cli.up({async} [, {callback}])     *devcontainer.cli.up()*
     Start the Dev Container for the current workspace.
+    - {async} (boolean): If true, run in background
+    - {callback} (function, optional): Called with success boolean
+    Returns: true on command start/success, false on failure.
+
+  devcontainer.cli.build({async} [, {callback}]) *devcontainer.cli.build()*
+    Build the Dev Container image for the current workspace.
+    - {async} (boolean): If true, run in background
+    - {callback} (function, optional): Called with success boolean
     Returns: true on success, false on failure.
+
+  devcontainer.cli.restart({should_build}, {async} [, {callback}])
+                                               *devcontainer.cli.restart()*
+    Restart the Dev Container for the current workspace.
+    - {should_build} (boolean): Build before restart when true
+    - {async} (boolean): If true, run in background
+    - {callback} (function, optional): Called with success boolean
+    Returns: true on command start/success, false on failure.
 
   devcontainer.cli.exec({cmd})                  *devcontainer.cli.exec()*
     Wrap a command array with `devcontainer exec`.

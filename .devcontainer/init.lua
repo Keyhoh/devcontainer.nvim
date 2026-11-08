@@ -5,8 +5,8 @@ local devcontainer = require('devcontainer')
 
 -- Configure Lua Language Server (lua-language-server)
 -- The server should be available in the Dev Container
-vim.lsp.config('lua_ls', {
-  cmd = devcontainer.exec_cmd({ 'lua-language-server' }),
+vim.lsp.config('lua_ls', devcontainer.wrap_for_lsp({
+  cmd = { 'lua-language-server' },
   root_markers = { '.luarc.json', '.git' },
   settings = {
     Lua = {
@@ -22,6 +22,6 @@ vim.lsp.config('lua_ls', {
       },
     },
   },
-})
+}))
 
 vim.lsp.enable('lua_ls')
