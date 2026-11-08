@@ -4,11 +4,19 @@ local lifecycle = require("devcontainer.cli.lifecycle")
 local utils = require("devcontainer.utils")
 local detection = require("devcontainer.detection")
 
-local started_containers = {}
+local container_states = {}
 
 local function resolve_workspace(opts)
   opts = opts or {}
   return opts.workspace_folder or vim.fn.getcwd(), opts
+end
+
+local function should_run_async(async, config)
+  if async ~= nil then
+    return async
+  end
+
+  return config.auto_start ~= false
 end
 
 -- Ensure the container is running.
@@ -18,32 +26,42 @@ end
 local function ensure_container_running(workspace, async)
   workspace = workspace or vim.fn.getcwd()
   local config = utils.get_config()
+  async = should_run_async(async, config)
 
   if config.auto_start == false then
     utils.log("debug", "auto_start is disabled; skipping automatic container startup")
     return true
   end
 
-  if async and started_containers[workspace] then
+  local state = container_states[workspace]
+  if state == "running" then
+    return true
+  end
+
+  if async and state == "starting" then
     return true
   end
 
   utils.log("debug", "Ensuring container is running for workspace: " .. workspace)
 
   if async then
+    container_states[workspace] = "starting"
     lifecycle.up(true, function(success)
       if success then
-        started_containers[workspace] = true
+        container_states[workspace] = "running"
         utils.log("debug", "Container is now running for workspace: " .. workspace)
+      else
+        container_states[workspace] = nil
       end
     end, workspace)
     return true
   else
     if not lifecycle.up(false, nil, workspace) then
+      container_states[workspace] = nil
       utils.log("error", "Failed to start Dev Container for workspace: " .. workspace)
       return false
     end
-    started_containers[workspace] = true
+    container_states[workspace] = "running"
     utils.log("debug", "Container is now running for workspace: " .. workspace)
     return true
   end
