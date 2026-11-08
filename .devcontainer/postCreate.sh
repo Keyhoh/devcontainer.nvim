@@ -3,6 +3,12 @@
 mkdir -p ~/.local/opt ~/.local/bin
 cd /tmp
 
+NVIM_VERSION=v0.12.6
+
+curl -L -R -O https://github.com/neovim/neovim/releases/download/$NVIM_VERSION/nvim-linux-x86_64.tar.gz
+tar xf nvim-linux-x86_64.tar.gz
+mv /tmp/nvim-linux-x86_64/bin/nvim ~/.local/bin
+
 LUA_VERSION=5.5.1
 
 curl -L -R -O https://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz

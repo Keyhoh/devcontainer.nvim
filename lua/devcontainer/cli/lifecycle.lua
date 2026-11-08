@@ -23,12 +23,12 @@ local function run_by_mode(async, cmd, callback, success_message, error_prefix)
   return runner.run_async(cmd, callback)
 end
 
-function M.up(async, callback)
+function M.up(async, callback, workspace)
   if not ensure_available(callback) then
     return false
   end
 
-  local workspace = vim.fn.getcwd()
+  workspace = workspace or vim.fn.getcwd()
   utils.log("debug", "Starting Dev Container for workspace: " .. workspace)
 
   return run_by_mode(
@@ -40,12 +40,12 @@ function M.up(async, callback)
   )
 end
 
-function M.build(async, callback)
+function M.build(async, callback, workspace)
   if not ensure_available(callback) then
     return false
   end
 
-  local workspace = vim.fn.getcwd()
+  workspace = workspace or vim.fn.getcwd()
   utils.log("debug", "Building Dev Container for workspace: " .. workspace)
 
   return run_by_mode(

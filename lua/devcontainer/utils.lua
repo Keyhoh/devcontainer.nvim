@@ -33,6 +33,7 @@ end
 
 function M.set_config(opts)
   config = vim.tbl_extend("force", {
+    auto_start = true,
     log_level = "error",
   }, opts or {})
 end

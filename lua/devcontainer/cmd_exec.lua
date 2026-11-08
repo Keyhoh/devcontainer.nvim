@@ -17,8 +17,14 @@ end
 -- When async=false (default), blocks until the container is running.
 local function ensure_container_running(workspace, async)
   workspace = workspace or vim.fn.getcwd()
+  local config = utils.get_config()
 
-  if started_containers[workspace] then
+  if config.auto_start == false then
+    utils.log("debug", "auto_start is disabled; skipping automatic container startup")
+    return true
+  end
+
+  if async and started_containers[workspace] then
     return true
   end
 
@@ -30,10 +36,10 @@ local function ensure_container_running(workspace, async)
         started_containers[workspace] = true
         utils.log("debug", "Container is now running for workspace: " .. workspace)
       end
-    end)
+    end, workspace)
     return true
   else
-    if not lifecycle.up(false) then
+    if not lifecycle.up(false, nil, workspace) then
       utils.log("error", "Failed to start Dev Container for workspace: " .. workspace)
       return false
     end
