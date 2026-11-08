@@ -30,11 +30,26 @@ function M.up(async, callback, workspace)
 
   workspace = workspace or vim.fn.getcwd()
   utils.log("debug", "Starting Dev Container for workspace: " .. workspace)
+  local completion_callback = callback
+
+  if async ~= false then
+    completion_callback = function(success)
+      if success then
+        vim.notify("[devcontainer] Dev Container started successfully", vim.log.levels.INFO)
+      else
+        vim.notify("[devcontainer] Failed to start Dev Container", vim.log.levels.ERROR)
+      end
+
+      if callback then
+        callback(success)
+      end
+    end
+  end
 
   return run_by_mode(
     async,
     commands.up(workspace),
-    callback,
+    completion_callback,
     "Dev Container started successfully",
     "Failed to start Dev Container: "
   )
