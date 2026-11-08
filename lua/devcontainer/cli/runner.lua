@@ -3,23 +3,54 @@ local M = {}
 local utils = require("devcontainer.utils")
 
 function M.run_sync(cmd, callback, success_message, error_prefix)
-  local result = vim.fn.system(cmd)
-  if vim.v.shell_error ~= 0 then
-    utils.log("error", error_prefix .. result)
+  utils.log("info", "Running: " .. table.concat(cmd, " "))
+
+  local exit_code = nil
+  local job_id = vim.fn.jobstart(cmd, {
+    on_exit = function(_, code, _)
+      exit_code = code
+    end,
+    on_stdout = function(_, data, _)
+      for _, line in ipairs(data) do
+        if line ~= "" then
+          utils.log("debug", "[stdout] " .. line)
+        end
+      end
+    end,
+    on_stderr = function(_, data, _)
+      for _, line in ipairs(data) do
+        if line ~= "" then
+          utils.log("debug", "[stderr] " .. line)
+        end
+      end
+    end,
+  })
+
+  if job_id <= 0 then
+    utils.log("error", "Failed to start job")
     if callback then
       callback(false)
     end
     return false
   end
 
-  if success_message then
-    utils.log("debug", success_message)
-  end
+  vim.fn.jobwait({ job_id }, 300000)
 
-  if callback then
-    callback(true)
+  if exit_code == 0 then
+    if success_message then
+      utils.log("debug", success_message)
+    end
+    if callback then
+      callback(true)
+    end
+    return true
+  else
+    utils.log("error", error_prefix .. "command failed with exit code: " .. tostring(exit_code))
+    if callback then
+      callback(false)
+    end
+    return false
   end
-  return true
 end
 
 function M.run_async(cmd, callback)

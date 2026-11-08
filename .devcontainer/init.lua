@@ -25,3 +25,4 @@ vim.lsp.config('lua_ls', devcontainer.wrap_for_lsp({
 }))
 
 vim.lsp.enable('lua_ls')
+
