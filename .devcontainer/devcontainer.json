@@ -10,6 +10,10 @@
 		"ghcr.io/devcontainers/features/git:1": {},
 		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
+	"mounts": [
+		"source=devcontainer-vscode-server,target=/home/vscode/.vscode-server,type=volume",
+		"source=devcontainer-copilot,target=/home/vscode/.copilot,type=volume"
+	],
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -18,7 +22,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "./postCreate.sh"
+	"postCreateCommand": "./.devcontainer/postCreate.sh"
 
 	// Configure tool-specific properties.
 	// "customizations": {},

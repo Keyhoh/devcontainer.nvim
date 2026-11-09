@@ -330,9 +330,16 @@ devcontainer.wrap_for_lsp({config} [, {opts}])   *devcontainer.wrap_for_lsp()*
   - {opts} (table, optional): Options table
     - workspace_folder (string): Workspace path (defaults to current directory)
     - async (boolean): If true, starts container asynchronously (default: false)
+    - container_workspace_folder (string): Container-side workspace path used
+      to remap host paths in LSP initialize payload when paths differ.
 
   Returns:
   - (table): New config table with wrapped cmd, or original config if no cmd
+  - Host-side file paths in initialize params are remapped to container paths
+    when the host path exists and belongs to the workspace.
+  - Container workspace path is auto-resolved in this order:
+    1) workspaceFolder, 2) workspaceMount target, 3) default
+       /workspaces/${localWorkspaceFolderBasename}
 
   Example:
   >

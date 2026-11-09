@@ -120,6 +120,9 @@ vim.lsp.config('gopls', {
 vim.lsp.config('tsserver', devcontainer.wrap_for_lsp({
   cmd = { 'typescript-language-server', '--stdio' },
   name = 'tsserver',
+}, {
+  -- Optional: force container-side workspace path when host/container paths differ
+  container_workspace_folder = '/workspaces/project',
 }))
 
 vim.lsp.enable('gopls')
@@ -141,6 +144,9 @@ API Reference
 
 **LSP Configuration (convenience wrappers):**
 - `wrap_for_lsp(config, opts)` - Wraps an entire LSP config table. Returns a new config with the wrapped command.
+  - When host/container workspace paths differ, host paths in LSP initialize payload are remapped to container paths when the host path exists.
+  - Container workspace path is auto-resolved from `.devcontainer/devcontainer.json` (`workspaceFolder`, then `workspaceMount`, then default `/workspaces/${localWorkspaceFolderBasename}`).
+  - `opts.container_workspace_folder` (string, optional): Explicit container workspace path for path remapping.
 
 Manual verification (minimal)
 - Add a `.devcontainer/devcontainer.json` to a project.
