@@ -9,6 +9,8 @@ local state = require("devcontainer.state")
 local utils = require("devcontainer.utils")
 local path_map = require("devcontainer.path_map")
 
+local unpack = table.unpack or unpack
+
 local function resolve_workspace_candidate(value)
   if type(value) ~= "string" or value == "" then
     return nil
@@ -24,6 +26,11 @@ local function workspace_from_uri(uri)
   local ok, fname = pcall(vim.uri_to_fname, uri)
   if not ok or type(fname) ~= "string" or fname == "" then
     return nil
+  end
+
+  local stat = vim.loop.fs_stat(fname)
+  if stat and stat.type == "directory" then
+    return resolve_workspace_candidate(fname)
   end
 
   return resolve_workspace_candidate(vim.fn.fnamemodify(fname, ":h"))
@@ -172,26 +179,37 @@ function M.wrap_for_lsp(config, opts)
           local raw_request = client.rpc.request
 
           if raw_notify and not client.rpc._devcontainer_notify_wrapped then
-            client.rpc.notify = function(method, params)
-              mapper.map_table_in_place(params)
-              return raw_notify(method, params)
+            client.rpc.notify = function(...)
+              local argc = select("#", ...)
+              local args = table.pack(...)
+              local method_idx = type(args[1]) == "string" and 1 or 2
+              local params_idx = method_idx + 1
+
+              mapper.map_table_in_place(args[params_idx])
+              return raw_notify(unpack(args, 1, argc))
             end
             client.rpc._devcontainer_notify_wrapped = true
           end
 
           if raw_request and not client.rpc._devcontainer_request_wrapped then
-            client.rpc.request = function(method, params, callback, notify_reply_callback)
-              mapper.map_table_in_place(params)
+            client.rpc.request = function(...)
+              local argc = select("#", ...)
+              local args = table.pack(...)
+              local method_idx = type(args[1]) == "string" and 1 or 2
+              local params_idx = method_idx + 1
+              local callback_idx = params_idx + 1
 
-              if callback then
-                local wrapped_callback = function(err, result, ctx, request_config)
+              mapper.map_table_in_place(args[params_idx])
+
+              local callback = args[callback_idx]
+              if type(callback) == "function" then
+                args[callback_idx] = function(err, result, ctx, request_config)
                   mapper.map_table_to_host_in_place(result)
                   callback(err, result, ctx, request_config)
                 end
-                return raw_request(method, params, wrapped_callback, notify_reply_callback)
               end
 
-              return raw_request(method, params, callback, notify_reply_callback)
+              return raw_request(unpack(args, 1, argc))
             end
             client.rpc._devcontainer_request_wrapped = true
           end

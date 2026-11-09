@@ -134,7 +134,8 @@ local function resolve_container_workspace(host_workspace, opts)
 end
 
 function M.create_mapper(host_workspace, opts)
-  local normalized_host = normalize(host_workspace or vim.fn.getcwd())
+  local root_workspace = detection.find_workspace_root(host_workspace or vim.fn.getcwd())
+  local normalized_host = normalize(root_workspace)
   local container_workspace = resolve_container_workspace(normalized_host, opts) or normalized_host
 
   local mapper = {}

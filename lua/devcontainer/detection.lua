@@ -31,7 +31,7 @@ function M.find_workspace_root(path)
 end
 
 function M.has_devcontainer(workspace)
-  workspace = workspace or M.find_workspace_root()
+  workspace = M.find_workspace_root(workspace or vim.fn.getcwd())
 
   if file_exists(workspace .. "/.devcontainer/devcontainer.json") then
     return true, workspace .. "/.devcontainer/devcontainer.json"
@@ -45,7 +45,7 @@ function M.has_devcontainer(workspace)
 end
 
 function M.find_init_file(workspace)
-  workspace = workspace or M.find_workspace_root()
+  workspace = M.find_workspace_root(workspace or vim.fn.getcwd())
 
   local init_lua = workspace .. "/.devcontainer/init.lua"
   if file_exists(init_lua) then
