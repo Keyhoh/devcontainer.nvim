@@ -161,6 +161,24 @@ function M.create_mapper(host_workspace, opts)
     return path
   end
 
+  function mapper.map_path_to_host(path)
+    if type(path) ~= "string" or path == "" then
+      return path
+    end
+
+    local normalized_path = normalize(path)
+    if normalized_path == container_workspace then
+      return normalized_host
+    end
+
+    local container_prefix = container_workspace .. "/"
+    if starts_with(normalized_path, container_prefix) then
+      return normalized_host .. normalized_path:sub(#container_workspace + 1)
+    end
+
+    return path
+  end
+
   function mapper.map_string(value)
     if type(value) ~= "string" or value == "" then
       return value
@@ -184,8 +202,53 @@ function M.create_mapper(host_workspace, opts)
     return value
   end
 
+  function mapper.map_string_to_host(value)
+    if type(value) ~= "string" or value == "" then
+      return value
+    end
+
+    if starts_with(value, "file://") then
+      local ok, fname = pcall(vim.uri_to_fname, value)
+      if ok and fname then
+        local mapped = mapper.map_path_to_host(fname)
+        if mapped ~= fname then
+          return vim.uri_from_fname(mapped)
+        end
+      end
+      return value
+    end
+
+    if starts_with(value, "/") then
+      return mapper.map_path_to_host(value)
+    end
+
+    return value
+  end
+
   function mapper.map_table_in_place(value, seen)
     if type(value) ~= "table" then
+      return value
+    end
+
+    function mapper.map_table_to_host_in_place(value, seen)
+      if type(value) ~= "table" then
+        return value
+      end
+
+      seen = seen or {}
+      if seen[value] then
+        return value
+      end
+      seen[value] = true
+
+      for key, item in pairs(value) do
+        if type(item) == "string" then
+          value[key] = mapper.map_string_to_host(item)
+        elseif type(item) == "table" then
+          mapper.map_table_to_host_in_place(item, seen)
+        end
+      end
+
       return value
     end
 

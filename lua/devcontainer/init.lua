@@ -9,6 +9,66 @@ local state = require("devcontainer.state")
 local utils = require("devcontainer.utils")
 local path_map = require("devcontainer.path_map")
 
+local function resolve_workspace_candidate(value)
+  if type(value) ~= "string" or value == "" then
+    return nil
+  end
+  return detection.find_workspace_root(value)
+end
+
+local function workspace_from_uri(uri)
+  if type(uri) ~= "string" or uri == "" then
+    return nil
+  end
+
+  local ok, fname = pcall(vim.uri_to_fname, uri)
+  if not ok or type(fname) ~= "string" or fname == "" then
+    return nil
+  end
+
+  return resolve_workspace_candidate(vim.fn.fnamemodify(fname, ":h"))
+end
+
+local function resolve_lsp_workspace(opts, lsp_config, params, root_dir)
+  local candidates = {}
+
+  table.insert(candidates, root_dir)
+  if lsp_config then
+    table.insert(candidates, lsp_config.root_dir)
+    table.insert(candidates, workspace_from_uri(lsp_config.root_uri))
+    if type(lsp_config.workspace_folders) == "table" then
+      local first = lsp_config.workspace_folders[1]
+      if type(first) == "table" then
+        table.insert(candidates, workspace_from_uri(first.uri))
+      end
+    end
+  end
+
+  if params then
+    table.insert(candidates, workspace_from_uri(params.rootUri))
+    if type(params.workspaceFolders) == "table" then
+      local first = params.workspaceFolders[1]
+      if type(first) == "table" then
+        table.insert(candidates, workspace_from_uri(first.uri))
+      end
+    end
+  end
+
+  if opts then
+    table.insert(candidates, opts.workspace_folder)
+  end
+  table.insert(candidates, vim.fn.getcwd())
+
+  for _, candidate in ipairs(candidates) do
+    local workspace = resolve_workspace_candidate(candidate)
+    if workspace then
+      return workspace
+    end
+  end
+
+  return vim.fn.getcwd()
+end
+
 function M.setup(opts)
   utils.set_config(opts or {})
   init_loader.load()
@@ -44,14 +104,22 @@ function M.wrap_for_lsp(config, opts)
   end
 
   opts = opts or {}
-  local workspace = opts.workspace_folder or vim.fn.getcwd()
-  local mapper = path_map.create_mapper(workspace, opts)
-  local mapped_cmd = mapper.map_cmd(config.cmd)
+  local base_cmd = vim.deepcopy(config.cmd)
 
-  local wrapped_cmd = M.exec_cmd(mapped_cmd, opts)
+  local function build_wrap_for_workspace(workspace)
+    local mapper = path_map.create_mapper(workspace, opts)
+    local mapped_cmd = mapper.map_cmd(vim.deepcopy(base_cmd))
+    local exec_opts = vim.tbl_extend("force", opts, { workspace_folder = workspace })
+    local wrapped_cmd = M.exec_cmd(mapped_cmd, exec_opts)
+    return wrapped_cmd or mapped_cmd, mapper
+  end
+
+  local initial_workspace = resolve_lsp_workspace(opts, config, nil, nil)
+  local wrapped_cmd, initial_mapper = build_wrap_for_workspace(initial_workspace)
   if wrapped_cmd then
     local original_before_init = config.before_init
     local original_on_new_config = config.on_new_config
+    local original_on_init = config.on_init
 
     local new_config = vim.tbl_extend("force", config, {
       cmd = wrapped_cmd,
@@ -59,26 +127,83 @@ function M.wrap_for_lsp(config, opts)
         if original_before_init then
           original_before_init(params, lsp_config)
         end
+
+        local workspace = resolve_lsp_workspace(opts, lsp_config, params, nil)
+        local mapper = path_map.create_mapper(workspace, opts)
         mapper.map_table_in_place(params)
+        if lsp_config then
+          lsp_config._devcontainer_path_mapper = mapper
+        end
       end,
       on_new_config = function(new_lsp_config, root_dir)
         if original_on_new_config then
           original_on_new_config(new_lsp_config, root_dir)
         end
 
-        if new_lsp_config and new_lsp_config.cmd then
-          local cmd = new_lsp_config.cmd
-          if type(cmd) == "table" and not (cmd[1] == "devcontainer" and cmd[2] == "exec") then
-            new_lsp_config.cmd = M.exec_cmd(mapper.map_cmd(new_lsp_config.cmd), opts)
+        if new_lsp_config then
+          local workspace = resolve_lsp_workspace(opts, new_lsp_config, nil, root_dir)
+          local refreshed_cmd, refreshed_mapper = build_wrap_for_workspace(workspace)
+          new_lsp_config.cmd = refreshed_cmd
+          new_lsp_config._devcontainer_path_mapper = refreshed_mapper
+
+          if type(new_lsp_config.root_dir) == "string" then
+            new_lsp_config.root_dir = refreshed_mapper.map_string(new_lsp_config.root_dir)
+          end
+
+          if type(new_lsp_config.root_uri) == "string" then
+            new_lsp_config.root_uri = refreshed_mapper.map_string(new_lsp_config.root_uri)
+          end
+
+          if type(new_lsp_config.workspace_folders) == "table" then
+            refreshed_mapper.map_table_in_place(new_lsp_config.workspace_folders)
+          end
+        end
+      end,
+      on_init = function(client, init_result)
+        local workspace = resolve_lsp_workspace(opts, client and client.config or nil, nil, nil)
+        local mapper = path_map.create_mapper(workspace, opts)
+
+        if client and client.config then
+          client.config._devcontainer_path_mapper = mapper
+        end
+
+        if client and client.rpc then
+          local raw_notify = client.rpc.notify
+          local raw_request = client.rpc.request
+
+          if raw_notify and not client.rpc._devcontainer_notify_wrapped then
+            client.rpc.notify = function(method, params)
+              mapper.map_table_in_place(params)
+              return raw_notify(method, params)
+            end
+            client.rpc._devcontainer_notify_wrapped = true
+          end
+
+          if raw_request and not client.rpc._devcontainer_request_wrapped then
+            client.rpc.request = function(method, params, callback, notify_reply_callback)
+              mapper.map_table_in_place(params)
+
+              if callback then
+                local wrapped_callback = function(err, result, ctx, request_config)
+                  mapper.map_table_to_host_in_place(result)
+                  callback(err, result, ctx, request_config)
+                end
+                return raw_request(method, params, wrapped_callback, notify_reply_callback)
+              end
+
+              return raw_request(method, params, callback, notify_reply_callback)
+            end
+            client.rpc._devcontainer_request_wrapped = true
           end
         end
 
-        if new_lsp_config and type(new_lsp_config.root_dir) == "string" then
-          new_lsp_config.root_dir = mapper.map_string(new_lsp_config.root_dir)
+        if original_on_init then
+          return original_on_init(client, init_result)
         end
       end,
     })
 
+    local mapper = initial_mapper
     if type(new_config.root_dir) == "string" then
       new_config.root_dir = mapper.map_string(new_config.root_dir)
     end
