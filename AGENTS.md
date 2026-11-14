@@ -9,27 +9,27 @@
   - 単体テスト: busted や plenary.nvim
     - 例（busted）: busted path/to/spec.lua --pattern "specific_test_name"
     - またはプロジェクトのテストランナーで単一の plenary テストを実行
-  - 統合/手動テスト（手順記載）: devcontainer を起動し、Neovim を開いて devcontainer exec 経由で LSP が起動し、補完や診断が動作することを確認。
+  - 統合/手動テスト（手順記載）: devcontainer を起動し、Neovim を開いて `:Devcontainer exec bash` などでコンテナ実行が機能することを確認。
 
 2) 高レベルアーキテクチャ（概観）
-- 目的: 元の LSP コマンドを `devcontainer exec` でラップして、言語サーバを Dev Container 内で透過的に実行する。stdin/stdout を保持して Neovim の LSP クライアントが変更なく通信できることを保証する。
-- 実行フロー: ワークスペース検出 → コンテナ起動確認（devcontainer up） → argv スタイル配列で LSP コマンドを devcontainer exec でラップ → stdin/stdout を接続してプロセスを起動
+- 目的: `devcontainer exec` を用いて任意のコマンドをコンテナ内で動かし、Neovim はホスト側で動き続けることを可能にする。
+- 実行フロー: ワークスペース検出 → コンテナ起動確認（devcontainer up） → argv スタイル配列でコマンドを devcontainer exec でラップ → stdin/stdout を接続してプロセスを起動
 
 3) 主要な慣習（リポジトリ固有）
 - argv 配列を保持: コマンドを単一のシェル文字列に連結しない。クォート問題を避けるため argv スタイル配列を使用すること。
-- 元の LSP コマンド引数を正確に保持し、入力配列を不意に変更しない。
-- LSP の stdout を汚染しない: プラグインや環境のログを stdout に出力しないこと。デバッグ/情報は stderr または Neovim のログ機構を使用する。
+- 元のコマンド引数を正確に保持し、入力配列を不意に変更しない。
+- 実行ログやデバッグ出力を stdout に出力しないこと。デバッグ/情報は stderr または Neovim のログ機構を使用する。
 - Dev Container 検出はまず `.devcontainer/devcontainer.json` を確認し、可能なら `.devcontainer.json` もサポートする。
 - ライフサイクル操作は公式の Dev Container CLI（devcontainer up / devcontainer exec）を使用すること。コンテナ管理ロジックを独自実装しない。
 - エラーやデバッグログは Neovim の通知/ログで提示する（stdout は使用しない）。log_level（例: debug/error）設定を提供すること。
-- MVP ではホストとコンテナのワークスペースパスが互換であると仮定し、パス変換は実装しない。
+- プラグインは CLI ラッパーとして設計し、LSP-specific なパス変換や proxy を持たない。
 
 4) 確認済みファイルとドキュメント
 
 エージェントの振る舞い方
 - プラグイン本体と devcontainer 設定に関する編集や提案に集中してください。
 - 実行環境に影響する変更（feature、image、postCreateCommand 等）の場合、コンテナ内で実行する検証手順（コマンドと期待される出力）を明記してください。
-- 追加コードは検出/cli/lsp/init のような小さくテストしやすいモジュールに分けることを優先してください。
+- 追加コードは検出/cli/init のような小さくテストしやすいモジュールに分けることを優先してください。
 - リポジトリの目的と無関係なアプリケーションコードを勝手に作成しないでください。
 
 改善希望がある場合

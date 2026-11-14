@@ -98,42 +98,15 @@ local wrapped_for_other_dir = devcontainer.exec_cmd(
 
 **Options:**
 - `async` (boolean, optional): Start the container asynchronously. Default is `false` (blocks until container is ready).
-  - `false` (default): Ensures container is ready before returning; use for LSP and critical services.
+  - `false` (default): Ensures container is ready before returning; use for critical services.
   - `true`: Starts container in background; use for non-critical tools or when responsiveness is preferred.
 - `workspace_folder` (string, optional): Workspace path to use instead of current directory.
-
-### LSP Integration
-
-For LSP configuration, use `exec_cmd()` directly or `wrap_for_lsp()` for wrapping entire configs:
-
-```lua
-require('devcontainer').setup()
-
-local devcontainer = require('devcontainer')
-
--- Wrap an LSP command directly
-vim.lsp.config('gopls', {
-  cmd = devcontainer.exec_cmd({ 'gopls' }),
-})
-
--- Or wrap an entire LSP config
-vim.lsp.config('tsserver', devcontainer.wrap_for_lsp({
-  cmd = { 'typescript-language-server', '--stdio' },
-  name = 'tsserver',
-}, {
-  -- Optional: force container-side workspace path when host/container paths differ
-  container_workspace_folder = '/workspaces/project',
-}))
-
-vim.lsp.enable('gopls')
-vim.lsp.enable('tsserver')
-```
 
 API Reference
 
 **Command Wrapping:**
 - `exec_cmd(cmd, opts)` - Wraps a command array for execution in the Dev Container via `devcontainer exec`. Returns the wrapped command array or the original if no Dev Container is found.
-  - `cmd` (table): Command array (e.g., `{ 'gopls' }`, `{ 'node', 'server.js' }`)
+  - `cmd` (table): Command array (e.g., `{ 'node', 'server.js' }`)
   - `opts` (table, optional): Options table
     - `async` (boolean): If `true`, starts container asynchronously. Default: `false`
     - `workspace_folder` (string): Workspace path (defaults to current directory)
@@ -142,17 +115,11 @@ API Reference
     - `workspace_folder` (string): Workspace path (defaults to current directory)
   - Returns a function that accepts a command array and returns the wrapped command
 
-**LSP Configuration (convenience wrappers):**
-- `wrap_for_lsp(config, opts)` - Wraps an entire LSP config table. Returns a new config with the wrapped command.
-  - When host/container workspace paths differ, host paths in LSP initialize payload are remapped to container paths when the host path exists.
-  - Container workspace path is auto-resolved from `.devcontainer/devcontainer.json` (`workspaceFolder`, then `workspaceMount`, then default `/workspaces/${localWorkspaceFolderBasename}`).
-  - `opts.container_workspace_folder` (string, optional): Explicit container workspace path for path remapping.
-
 Manual verification (minimal)
 - Add a `.devcontainer/devcontainer.json` to a project.
 - Start the container: `:Devcontainer up`
 - Execute commands in the container: `:Devcontainer exec bash`
-- Open a file and verify the configured LSP starts via `devcontainer exec` and that completion/diagnostics work.
+- Open a file and verify the command runs via `devcontainer exec` as expected.
 
 Development and testing
 - Implementation lives under `lua/devcontainer/` with modular structure:
